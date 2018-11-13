@@ -5967,6 +5967,7 @@ namespace Nop.Services.Installation
                 SitemapIncludeBlogPosts = true,
                 SitemapIncludeCategories = true,
                 SitemapIncludeManufacturers = true,
+                SitemapIncludeNews = true,
                 SitemapIncludeProducts = false,
                 SitemapIncludeProductTags = false,
 
@@ -5974,6 +5975,7 @@ namespace Nop.Services.Installation
                 SitemapXmlIncludeBlogPosts = true,
                 SitemapXmlIncludeCategories = true,
                 SitemapXmlIncludeManufacturers = true,
+                SitemapXmlIncludeNews = true,
                 SitemapXmlIncludeProducts = true,
                 SitemapXmlIncludeProductTags = true,
                 SitemapXmlIncludeCustomUrls = true,

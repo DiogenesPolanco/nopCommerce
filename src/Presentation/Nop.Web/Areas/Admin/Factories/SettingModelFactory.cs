@@ -320,6 +320,7 @@ namespace Nop.Web.Areas.Admin.Factories
                 SitemapIncludeBlogPosts = sitemapSettings.SitemapIncludeBlogPosts,
                 SitemapIncludeCategories = sitemapSettings.SitemapIncludeCategories,
                 SitemapIncludeManufacturers = sitemapSettings.SitemapIncludeManufacturers,
+                SitemapIncludeNews = sitemapSettings.SitemapIncludeNews,
                 SitemapIncludeProducts = sitemapSettings.SitemapIncludeProducts,
                 SitemapIncludeProductTags = sitemapSettings.SitemapIncludeProductTags,
                 SitemapIncludeTopics = sitemapSettings.SitemapIncludeTopics
@@ -350,6 +351,7 @@ namespace Nop.Web.Areas.Admin.Factories
             model.SitemapIncludeBlogPosts_OverrideForStore = _settingService.SettingExists(sitemapSettings, x => x.SitemapIncludeBlogPosts, storeId);
             model.SitemapIncludeCategories_OverrideForStore = _settingService.SettingExists(sitemapSettings, x => x.SitemapIncludeCategories, storeId);
             model.SitemapIncludeManufacturers_OverrideForStore = _settingService.SettingExists(sitemapSettings, x => x.SitemapIncludeManufacturers, storeId);
+            model.SitemapIncludeNews_OverrideForStore = _settingService.SettingExists(sitemapSettings, x => x.SitemapIncludeNews, storeId);
             model.SitemapIncludeProducts_OverrideForStore = _settingService.SettingExists(sitemapSettings, x => x.SitemapIncludeProducts, storeId);
             model.SitemapIncludeProductTags_OverrideForStore = _settingService.SettingExists(sitemapSettings, x => x.SitemapIncludeProductTags, storeId);
             model.SitemapIncludeTopics_OverrideForStore = _settingService.SettingExists(sitemapSettings, x => x.SitemapIncludeTopics, storeId);

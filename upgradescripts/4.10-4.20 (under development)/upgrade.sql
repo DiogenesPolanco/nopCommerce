@@ -251,6 +251,15 @@ set @resources='
   <LocaleResource Name="Sitemap.BlogPosts">
     <Value>Blog posts</Value>
   </LocaleResource>
+  <LocaleResource Name="Admin.Configuration.Settings.GeneralCommon.SitemapIncludeNews">
+    <Value>Sitemap includes news items</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Configuration.Settings.GeneralCommon.SitemapIncludeNews.Hint">
+    <Value>Check if you want to include news items in sitemap.</Value>
+  </LocaleResource>
+  <LocaleResource Name="Sitemap.News">
+    <Value>News</Value>
+  </LocaleResource>
 </Language>
 '
 
@@ -1067,8 +1076,10 @@ VALUES
 	('sitemapsettings.sitemapxmlincludeproducts'),
 	('sitemapsettings.sitemapxmlincludeproducttags'),
 	('sitemapsettings.sitemapxmlincludetopics'),
+	('sitemapsettings.sitemapxmlincludenews'),
 	('sitemapsettings.sitemapincludetopics'),
-	('sitemapsettings.sitemapincludeblogposts');
+	('sitemapsettings.sitemapincludeblogposts'),
+	('sitemapsettings.sitemapincludenews');
 
 DECLARE cur_settingName CURSOR FOR 
 	SELECT sname FROM @settingNameList
@@ -1137,7 +1148,6 @@ BEGIN
 	WHERE [Name] = 'commonsettings.sitemappagesize'
 END
 GO
-
 
 --updating of indexes in the Picture table for reduced table size after upgrade nopCommerce from 4.00 to 4.10 version
 ALTER INDEX ALL ON [Picture] REBUILD

@@ -93,6 +93,10 @@ namespace Nop.Web.Areas.Admin.Models.Settings
         public bool SitemapIncludeManufacturers { get; set; }
         public bool SitemapIncludeManufacturers_OverrideForStore { get; set; }
 
+        [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.SitemapIncludeNews")]
+        public bool SitemapIncludeNews { get; set; }
+        public bool SitemapIncludeNews_OverrideForStore { get; set; }
+
         [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.SitemapIncludeProducts")]
         public bool SitemapIncludeProducts { get; set; }
         public bool SitemapIncludeProducts_OverrideForStore { get; set; }

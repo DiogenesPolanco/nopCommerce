@@ -1206,6 +1206,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             sitemapSettings.SitemapIncludeBlogPosts = model.StoreInformationSettings.SitemapIncludeBlogPosts;
             sitemapSettings.SitemapIncludeCategories = model.StoreInformationSettings.SitemapIncludeCategories;
             sitemapSettings.SitemapIncludeManufacturers = model.StoreInformationSettings.SitemapIncludeManufacturers;
+            sitemapSettings.SitemapIncludeNews = model.StoreInformationSettings.SitemapIncludeNews;
             sitemapSettings.SitemapIncludeProducts = model.StoreInformationSettings.SitemapIncludeProducts;
             sitemapSettings.SitemapIncludeProductTags = model.StoreInformationSettings.SitemapIncludeProductTags;
             sitemapSettings.SitemapIncludeTopics = model.StoreInformationSettings.SitemapIncludeTopics;
@@ -1233,6 +1234,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             _settingService.SaveSettingOverridablePerStore(sitemapSettings, x => x.SitemapIncludeBlogPosts, model.StoreInformationSettings.SitemapIncludeBlogPosts_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(sitemapSettings, x => x.SitemapIncludeCategories, model.StoreInformationSettings.SitemapIncludeCategories_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(sitemapSettings, x => x.SitemapIncludeManufacturers, model.StoreInformationSettings.SitemapIncludeManufacturers_OverrideForStore, storeScope, false);
+            _settingService.SaveSettingOverridablePerStore(sitemapSettings, x => x.SitemapIncludeNews, model.StoreInformationSettings.SitemapIncludeNews_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(sitemapSettings, x => x.SitemapIncludeProducts, model.StoreInformationSettings.SitemapIncludeProducts_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(sitemapSettings, x => x.SitemapIncludeProductTags, model.StoreInformationSettings.SitemapIncludeProductTags_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(sitemapSettings, x => x.SitemapIncludeTopics, model.StoreInformationSettings.SitemapIncludeTopics_OverrideForStore, storeScope, false);

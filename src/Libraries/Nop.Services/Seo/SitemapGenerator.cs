@@ -20,6 +20,7 @@ using Nop.Core.Domain.Seo;
 using Nop.Services.Blogs;
 using Nop.Services.Catalog;
 using Nop.Services.Localization;
+using Nop.Services.News;
 using Nop.Services.Topics;
 
 namespace Nop.Services.Seo
@@ -38,6 +39,7 @@ namespace Nop.Services.Seo
         private readonly ICategoryService _categoryService;
         private readonly ILanguageService _languageService;
         private readonly IManufacturerService _manufacturerService;
+        private readonly INewsService _newsService;
         private readonly IProductService _productService;
         private readonly IProductTagService _productTagService;
         private readonly IStoreContext _storeContext;
@@ -62,6 +64,7 @@ namespace Nop.Services.Seo
             ICategoryService categoryService,
             ILanguageService languageService,
             IManufacturerService manufacturerService,
+            INewsService newsService,
             IProductService productService,
             IProductTagService productTagService,
             IStoreContext storeContext,
@@ -82,6 +85,7 @@ namespace Nop.Services.Seo
             this._categoryService = categoryService;
             this._languageService = languageService;
             this._manufacturerService = manufacturerService;
+            this._newsService = newsService;
             this._productService = productService;
             this._productTagService = productTagService;
             this._storeContext = storeContext;
@@ -209,6 +213,10 @@ namespace Nop.Services.Seo
             {
                 sitemapUrls.Add(GetLocalizedSitemapUrl("Boards"));
             }
+            
+            //news
+            if (_sitemapSettings.SitemapXmlIncludeNews)
+                sitemapUrls.AddRange(GetNewsItemUrls());
 
             //categories
             if (_sitemapSettings.SitemapXmlIncludeCategories)
@@ -239,6 +247,16 @@ namespace Nop.Services.Seo
                 sitemapUrls.AddRange(GetCustomUrls());
 
             return sitemapUrls;
+        }
+
+        /// <summary>
+        /// Get news item URLs for the sitemap
+        /// </summary>
+        /// <returns>Sitemap URLs</returns>
+        protected virtual IEnumerable<SitemapUrl> GetNewsItemUrls()
+        {
+            return _newsService.GetAllNews(storeId: _storeContext.CurrentStore.Id)
+                .Select(news => GetLocalizedSitemapUrl("NewsItem", GetSeoRouteParams(news), news.CreatedOnUtc));
         }
 
         /// <summary>

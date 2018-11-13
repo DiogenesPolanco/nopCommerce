@@ -29,6 +29,7 @@ using Nop.Services.Directory;
 using Nop.Services.Forums;
 using Nop.Services.Localization;
 using Nop.Services.Media;
+using Nop.Services.News;
 using Nop.Services.Orders;
 using Nop.Services.Security;
 using Nop.Services.Seo;
@@ -66,6 +67,7 @@ namespace Nop.Web.Factories
         private readonly ILanguageService _languageService;
         private readonly ILocalizationService _localizationService;
         private readonly IManufacturerService _manufacturerService;
+        private readonly INewsService _newsService;
         private readonly INopFileProvider _fileProvider;
         private readonly IPageHeadBuilder _pageHeadBuilder;
         private readonly IPermissionService _permissionService;
@@ -111,6 +113,7 @@ namespace Nop.Web.Factories
             ILanguageService languageService,
             ILocalizationService localizationService,
             IManufacturerService manufacturerService,
+            INewsService newsService,
             INopFileProvider fileProvider,
             IPageHeadBuilder pageHeadBuilder,
             IPermissionService permissionService,
@@ -152,6 +155,7 @@ namespace Nop.Web.Factories
             this._languageService = languageService;
             this._localizationService = localizationService;
             this._manufacturerService = manufacturerService;
+            this._newsService = newsService;
             this._fileProvider = fileProvider;
             this._pageHeadBuilder = pageHeadBuilder;
             this._permissionService = permissionService;
@@ -612,7 +616,7 @@ namespace Nop.Web.Factories
                 //at the moment topics are in general category too
                 if (_sitemapSettings.SitemapIncludeTopics)
                 {
-                    var topics = _topicService.GetAllTopics(storeId: _storeContext.CurrentStore.Id)
+                    var topics = _topicService.GetAllTopics(_storeContext.CurrentStore.Id)
                         .Where(topic => topic.IncludeInSitemap);
 
                     model.Items.AddRange(topics.Select(topic => new SitemapModel.SitemapItemModel
@@ -624,10 +628,10 @@ namespace Nop.Web.Factories
                 }
 
                 //blog posts
-                if (_sitemapSettings.SitemapIncludeBlogPosts)
+                if (_sitemapSettings.SitemapIncludeBlogPosts && _blogSettings.Enabled)
                 {
                     var blogPostsGroupTitle = _localizationService.GetResource("Sitemap.BlogPosts");
-                    var blogPosts = _blogService.GetAllBlogPosts(storeId: _storeContext.CurrentStore.Id)
+                    var blogPosts = _blogService.GetAllBlogPosts(_storeContext.CurrentStore.Id)
                         .Where(p => p.IncludeInSitemap);
 
                     model.Items.AddRange(blogPosts.Select(post => new SitemapModel.SitemapItemModel
@@ -635,6 +639,19 @@ namespace Nop.Web.Factories
                         GroupTitle = blogPostsGroupTitle,
                         Name = post.Title,
                         Url = urlHelper.RouteUrl("BlogPost", new { SeName = _urlRecordService.GetSeName(post) })
+                    }));
+                }
+
+                //news
+                if (_sitemapSettings.SitemapIncludeNews && _newsSettings.Enabled)
+                {
+                    var newsGroupTitle = _localizationService.GetResource("Sitemap.News");
+                    var news = _newsService.GetAllNews(storeId: _storeContext.CurrentStore.Id);
+                    model.Items.AddRange(news.Select(newsItem => new SitemapModel.SitemapItemModel
+                    {
+                        GroupTitle = newsGroupTitle,
+                        Name = newsItem.Title,
+                        Url = urlHelper.RouteUrl("NewsItem", new { SeName = _urlRecordService.GetSeName(newsItem) })
                     }));
                 }
 

@@ -105,7 +105,7 @@ namespace Nop.Web.Controllers
                 return new RssActionResult(feed, _webHelper.GetThisPageUrl(false));
 
             var items = new List<RssItem>();
-            var newsItems = _newsService.GetAllNews(languageId, _storeContext.CurrentStore.Id);
+            var newsItems = _newsService.GetAllNewsPaged(languageId, _storeContext.CurrentStore.Id);
             foreach (var n in newsItems)
             {
                 var newsUrl = Url.RouteUrl("NewsItem", new { SeName = _urlRecordService.GetSeName(n, n.LanguageId, ensureTwoPublishedLanguages: false) }, _webHelper.CurrentRequestProtocol);

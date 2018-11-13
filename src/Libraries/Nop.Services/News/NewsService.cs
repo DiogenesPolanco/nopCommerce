@@ -44,6 +44,49 @@ namespace Nop.Services.News
 
         #endregion
 
+        #region Utilities
+
+        /// <summary>
+        /// Gets all news
+        /// </summary>
+        /// <param name="languageId">Language identifier; 0 if you want to get all records</param>
+        /// <param name="storeId">Store identifier; 0 if you want to get all records</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
+        /// <returns>News items</returns>
+        protected virtual IQueryable<NewsItem> AllNews(int languageId = 0, int storeId = 0,
+            bool showHidden = false)
+        {
+            var query = _newsItemRepository.Table;
+            if (languageId > 0)
+                query = query.Where(n => languageId == n.LanguageId);
+            if (!showHidden)
+            {
+                var utcNow = DateTime.UtcNow;
+                query = query.Where(n => n.Published);
+                query = query.Where(n => !n.StartDateUtc.HasValue || n.StartDateUtc <= utcNow);
+                query = query.Where(n => !n.EndDateUtc.HasValue || n.EndDateUtc >= utcNow);
+            }
+
+            query = query.OrderByDescending(n => n.StartDateUtc ?? n.CreatedOnUtc);
+
+            //Store mapping
+            if (storeId > 0 && !_catalogSettings.IgnoreStoreLimitations)
+            {
+                query = from n in query
+                        join sm in _storeMappingRepository.Table
+                        on new { c1 = n.Id, c2 = _entityName } equals new { c1 = sm.EntityId, c2 = sm.EntityName } into n_sm
+                        from sm in n_sm.DefaultIfEmpty()
+                        where !n.LimitedToStores || storeId == sm.StoreId
+                        select n;
+
+                query = query.Distinct().OrderByDescending(n => n.StartDateUtc ?? n.CreatedOnUtc);
+            }
+
+            return query;
+        }
+
+        #endregion
+
         #region Methods
 
         #region News
@@ -92,41 +135,28 @@ namespace Nop.Services.News
         /// </summary>
         /// <param name="languageId">Language identifier; 0 if you want to get all records</param>
         /// <param name="storeId">Store identifier; 0 if you want to get all records</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
+        /// <returns>News items</returns>
+        public virtual IList<NewsItem> GetAllNews(int languageId = 0, int storeId = 0,
+            bool showHidden = false)
+        {
+            return AllNews(languageId, storeId, showHidden).ToList();
+        }
+
+        /// <summary>
+        /// Gets all news
+        /// </summary>
+        /// <param name="languageId">Language identifier; 0 if you want to get all records</param>
+        /// <param name="storeId">Store identifier; 0 if you want to get all records</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>News items</returns>
-        public virtual IPagedList<NewsItem> GetAllNews(int languageId = 0, int storeId = 0,
+        public virtual IPagedList<NewsItem> GetAllNewsPaged(int languageId = 0, int storeId = 0,
             int pageIndex = 0, int pageSize = int.MaxValue, bool showHidden = false)
         {
-            var query = _newsItemRepository.Table;
-            if (languageId > 0)
-                query = query.Where(n => languageId == n.LanguageId);
-            if (!showHidden)
-            {
-                var utcNow = DateTime.UtcNow;
-                query = query.Where(n => n.Published);
-                query = query.Where(n => !n.StartDateUtc.HasValue || n.StartDateUtc <= utcNow);
-                query = query.Where(n => !n.EndDateUtc.HasValue || n.EndDateUtc >= utcNow);
-            }
-
-            query = query.OrderByDescending(n => n.StartDateUtc ?? n.CreatedOnUtc);
-
-            //Store mapping
-            if (storeId > 0 && !_catalogSettings.IgnoreStoreLimitations)
-            {
-                query = from n in query
-                        join sm in _storeMappingRepository.Table
-                        on new { c1 = n.Id, c2 = _entityName } equals new { c1 = sm.EntityId, c2 = sm.EntityName } into n_sm
-                        from sm in n_sm.DefaultIfEmpty()
-                        where !n.LimitedToStores || storeId == sm.StoreId
-                        select n;
-
-                query = query.Distinct().OrderByDescending(n => n.StartDateUtc ?? n.CreatedOnUtc);
-            }
-
-            var news = new PagedList<NewsItem>(query, pageIndex, pageSize);
-            return news;
+            var news = AllNews(languageId, storeId, showHidden);
+            return new PagedList<NewsItem>(news, pageIndex, pageSize);
         }
 
         /// <summary>

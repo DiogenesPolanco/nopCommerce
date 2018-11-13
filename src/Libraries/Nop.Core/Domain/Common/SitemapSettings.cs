@@ -3,6 +3,9 @@ using Nop.Core.Configuration;
 
 namespace Nop.Core.Domain.Common
 {
+    /// <summary>
+    /// Sitemap settings
+    /// </summary>
     public class SitemapSettings : ISettings
     {
         public SitemapSettings()
@@ -59,6 +62,16 @@ namespace Nop.Core.Domain.Common
         /// Gets or sets a value indicating whether to include manufacturers to sitemap.xml
         /// </summary>
         public bool SitemapXmlIncludeManufacturers { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to include news to sitemap
+        /// </summary>
+        public bool SitemapIncludeNews { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to include news to sitemap.xml
+        /// </summary>
+        public bool SitemapXmlIncludeNews { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether to include products to sitemap

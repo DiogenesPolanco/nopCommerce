@@ -108,7 +108,7 @@ namespace Nop.Web.Areas.Admin.Factories
                 throw new ArgumentNullException(nameof(searchModel));
 
             //get news items
-            var newsItems = _newsService.GetAllNews(showHidden: true,
+            var newsItems = _newsService.GetAllNewsPaged(showHidden: true,
                 storeId: searchModel.SearchStoreId,
                 pageIndex: searchModel.Page - 1, pageSize: searchModel.PageSize);
 

@@ -37,7 +37,8 @@
                 $("#pnlSitemapIncludeProducts"),
                 $("#pnlSitemapIncludeProductTags"),
                 $("#pnlSitemapIncludeTopics"),
-                $("#pnlSitemapIncludeBlogPosts")
+                $("#pnlSitemapIncludeBlogPosts"),
+                $("#pnlSitemapIncludeNews")
             ];
             if ($('#@Html.IdFor(model => model.StoreInformationSettings.SitemapEnabled)').is(':checked')) {
                 for (var i = 0; i < containers.length; ++i)
@@ -537,6 +538,16 @@
                                 <div class="col-md-9">
                                     <nop-editor asp-for="StoreInformationSettings.SitemapIncludeBlogPosts" />
                                     <span asp-validation-for="StoreInformationSettings.SitemapIncludeBlogPosts"></span>
+                                </div>
+                            </div>
+                            <div class="form-group advanced-setting" id="pnlSitemapIncludeNews">
+                                <div class="col-md-3">
+                                    <nop-override-store-checkbox asp-for="StoreInformationSettings.SitemapIncludeNews_OverrideForStore" asp-input="StoreInformationSettings.SitemapIncludeNews" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                                    <nop-label asp-for="StoreInformationSettings.SitemapIncludeNews" />
+                                </div>
+                                <div class="col-md-9">
+                                    <nop-editor asp-for="StoreInformationSettings.SitemapIncludeNews" />
+                                    <span asp-validation-for="StoreInformationSettings.SitemapIncludeNews"></span>
                                 </div>
                             </div>
                         </nop-nested-setting>

@@ -37,11 +37,20 @@ namespace Nop.Services.News
         /// </summary>
         /// <param name="languageId">Language identifier; 0 if you want to get all records</param>
         /// <param name="storeId">Store identifier; 0 if you want to get all records</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
+        /// <returns>News items</returns>
+        IList<NewsItem> GetAllNews(int languageId = 0, int storeId = 0, bool showHidden = false);
+
+        /// <summary>
+        /// Gets all news paged
+        /// </summary>
+        /// <param name="languageId">Language identifier; 0 if you want to get all records</param>
+        /// <param name="storeId">Store identifier; 0 if you want to get all records</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>News items</returns>
-        IPagedList<NewsItem> GetAllNews(int languageId = 0, int storeId = 0,
+        IPagedList<NewsItem> GetAllNewsPaged(int languageId = 0, int storeId = 0,
             int pageIndex = 0, int pageSize = int.MaxValue, bool showHidden = false);
 
         /// <summary>
