@@ -1,0 +1,13 @@
+﻿@model Nop.Plugin.Widgets.MyCustomPlugin.Models.PublicInfoModel
+@{
+    Layout = "";
+}
+
+<div class="Plugin-wrapper topic-block">
+    <div id="My-Custom-Plugin" class="topic-block-title">
+        @if (Model.UseSandbox)
+        {
+            <h2>@Model.Message</h2>
+        }
+    </div>
+</div> 
