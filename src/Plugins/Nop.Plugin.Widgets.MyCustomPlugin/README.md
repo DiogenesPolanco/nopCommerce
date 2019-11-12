@@ -3,7 +3,7 @@
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>The add-ons are specialized modules which maximize the functionality of nopcommerce such as payment processors, shipping provider, etc. Currently you can take advantage of their official documentation by entering this <strong><a href="https://diogenespolanco.com/2019/10/22/how-to-write-a-plugin-for-nopcommerce">link</a>.</strong></p>
+<p>The add-ons are specialized modules which maximize the functionality of nopcommerce such as payment processors, shipping provider, etc. Currently you can take advantage of their official documentation by entering this <strong><a href="https://diogenespolanco.com/posts/how-to-develop-a-plugin-for-nopcommerce-46ho/">link</a>.</strong></p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
