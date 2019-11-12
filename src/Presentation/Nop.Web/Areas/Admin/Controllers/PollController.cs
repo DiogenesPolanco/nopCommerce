@@ -3,15 +3,17 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core.Domain.Polls;
 using Nop.Services.Localization;
+using Nop.Services.Messages;
 using Nop.Services.Polls;
 using Nop.Services.Security;
 using Nop.Services.Stores;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
 using Nop.Web.Areas.Admin.Models.Polls;
-using Nop.Web.Framework.Kendoui;
 using Nop.Web.Framework.Mvc;
 using Nop.Web.Framework.Mvc.Filters;
+using Nop.Web.Framework.Mvc.ModelBinding;
+using Nop.Web.Framework.Validators;
 
 namespace Nop.Web.Areas.Admin.Controllers
 {
@@ -20,6 +22,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         #region Fields
 
         private readonly ILocalizationService _localizationService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly IPollModelFactory _pollModelFactory;
         private readonly IPollService _pollService;
@@ -31,18 +34,20 @@ namespace Nop.Web.Areas.Admin.Controllers
         #region Ctor
 
         public PollController(ILocalizationService localizationService,
+            INotificationService notificationService,
             IPermissionService permissionService,
             IPollModelFactory pollModelFactory,
             IPollService pollService,
             IStoreMappingService storeMappingService,
             IStoreService storeService)
         {
-            this._localizationService = localizationService;
-            this._permissionService = permissionService;
-            this._pollModelFactory = pollModelFactory;
-            this._pollService = pollService;
-            this._storeMappingService = storeMappingService;
-            this._storeService = storeService;
+            _localizationService = localizationService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _pollModelFactory = pollModelFactory;
+            _pollService = pollService;
+            _storeMappingService = storeMappingService;
+            _storeService = storeService;
         }
 
         #endregion
@@ -95,7 +100,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult List(PollSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _pollModelFactory.PreparePollListModel(searchModel);
@@ -123,20 +128,15 @@ namespace Nop.Web.Areas.Admin.Controllers
             if (ModelState.IsValid)
             {
                 var poll = model.ToEntity<Poll>();
-                poll.StartDateUtc = model.StartDate;
-                poll.EndDateUtc = model.EndDate;
                 _pollService.InsertPoll(poll);
 
                 //save store mappings
                 SaveStoreMappings(poll, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Polls.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Polls.Added"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
 
                 return RedirectToAction("Edit", new { id = poll.Id });
             }
@@ -178,20 +178,15 @@ namespace Nop.Web.Areas.Admin.Controllers
             if (ModelState.IsValid)
             {
                 poll = model.ToEntity(poll);
-                poll.StartDateUtc = model.StartDate;
-                poll.EndDateUtc = model.EndDate;
                 _pollService.UpdatePoll(poll);
 
                 //save store mappings
                 SaveStoreMappings(poll, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Polls.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Polls.Updated"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
 
                 return RedirectToAction("Edit", new { id = poll.Id });
             }
@@ -216,7 +211,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             _pollService.DeletePoll(poll);
 
-            SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Polls.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Polls.Deleted"));
 
             return RedirectToAction("List");
         }
@@ -229,7 +224,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult PollAnswers(PollAnswerSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a poll with the specified id
             var poll = _pollService.GetPollById(searchModel.PollId)
@@ -241,47 +236,45 @@ namespace Nop.Web.Areas.Admin.Controllers
             return Json(model);
         }
 
+        //ValidateAttribute is used to force model validation
         [HttpPost]
-        public virtual IActionResult PollAnswerUpdate(PollAnswerModel model)
+        public virtual IActionResult PollAnswerUpdate([Validate] PollAnswerModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
                 return AccessDeniedView();
 
             if (!ModelState.IsValid)
-                return Json(new DataSourceResult { Errors = ModelState.SerializeErrors() });
+                return ErrorJson(ModelState.SerializeErrors());
 
             //try to get a poll answer with the specified id
             var pollAnswer = _pollService.GetPollAnswerById(model.Id)
                 ?? throw new ArgumentException("No poll answer found with the specified id");
 
-            pollAnswer.Name = model.Name;
-            pollAnswer.DisplayOrder = model.DisplayOrder;
+            pollAnswer = model.ToEntity(pollAnswer);
             _pollService.UpdatePoll(pollAnswer.Poll);
 
             return new NullJsonResult();
         }
 
+        //ValidateAttribute is used to force model validation
         [HttpPost]
-        public virtual IActionResult PollAnswerAdd(int pollId, PollAnswerModel model)
+        public virtual IActionResult PollAnswerAdd(int pollId, [Validate] PollAnswerModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
                 return AccessDeniedView();
 
             if (!ModelState.IsValid)
-                return Json(new DataSourceResult { Errors = ModelState.SerializeErrors() });
+                return ErrorJson(ModelState.SerializeErrors());
 
             //try to get a poll with the specified id
             var poll = _pollService.GetPollById(pollId)
                 ?? throw new ArgumentException("No poll found with the specified id", nameof(pollId));
 
-            poll.PollAnswers.Add(new PollAnswer
-            {
-                Name = model.Name,
-                DisplayOrder = model.DisplayOrder
-            });
+            //fill entity from model
+            poll.PollAnswers.Add(model.ToEntity<PollAnswer>());
             _pollService.UpdatePoll(poll);
 
-            return new NullJsonResult();
+            return Json(new { Result = true });
         }
 
         [HttpPost]

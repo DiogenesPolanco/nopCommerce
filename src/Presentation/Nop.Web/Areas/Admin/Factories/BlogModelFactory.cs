@@ -2,16 +2,19 @@
 using System.Linq;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core.Domain.Blogs;
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Html;
 using Nop.Services.Blogs;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
+using Nop.Services.Seo;
 using Nop.Services.Stores;
 using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
 using Nop.Web.Areas.Admin.Models.Blogs;
 using Nop.Web.Framework.Extensions;
 using Nop.Web.Framework.Factories;
+using Nop.Web.Framework.Models.Extensions;
 
 namespace Nop.Web.Areas.Admin.Factories
 {
@@ -22,6 +25,7 @@ namespace Nop.Web.Areas.Admin.Factories
     {
         #region Fields
 
+        private readonly CatalogSettings _catalogSettings;
         private readonly IBaseAdminModelFactory _baseAdminModelFactory;
         private readonly IBlogService _blogService;
         private readonly IDateTimeHelper _dateTimeHelper;
@@ -29,36 +33,42 @@ namespace Nop.Web.Areas.Admin.Factories
         private readonly ILocalizationService _localizationService;
         private readonly IStoreMappingSupportedModelFactory _storeMappingSupportedModelFactory;
         private readonly IStoreService _storeService;
+        private readonly IUrlRecordService _urlRecordService;
 
         #endregion
 
         #region Ctor
 
-        public BlogModelFactory(IBaseAdminModelFactory baseAdminModelFactory,
+        public BlogModelFactory(CatalogSettings catalogSettings,
+            IBaseAdminModelFactory baseAdminModelFactory,
             IBlogService blogService,
             IDateTimeHelper dateTimeHelper,
             ILanguageService languageService,
             ILocalizationService localizationService,
             IStoreMappingSupportedModelFactory storeMappingSupportedModelFactory,
-            IStoreService storeService)
+            IStoreService storeService,
+            IUrlRecordService urlRecordService)
         {
-            this._baseAdminModelFactory = baseAdminModelFactory;
-            this._blogService = blogService;
-            this._dateTimeHelper = dateTimeHelper;
-            this._languageService = languageService;
-            this._localizationService = localizationService;
-            this._storeMappingSupportedModelFactory = storeMappingSupportedModelFactory;
-            this._storeService = storeService;
+            _catalogSettings = catalogSettings;
+            _baseAdminModelFactory = baseAdminModelFactory;
+            _blogService = blogService;
+            _dateTimeHelper = dateTimeHelper;
+            _languageService = languageService;
+            _localizationService = localizationService;
+            _storeMappingSupportedModelFactory = storeMappingSupportedModelFactory;
+            _storeService = storeService;
+            _urlRecordService = urlRecordService;
         }
 
         #endregion
-
+        
         #region Methods
 
         /// <summary>
         /// Prepare blog content model
         /// </summary>
         /// <param name="blogContentModel">Blog content model</param>
+        /// <param name="filterByBlogPostId">Blog post ID</param>
         /// <returns>Blog content model</returns>
         public virtual BlogContentModel PrepareBlogContentModel(BlogContentModel blogContentModel, int? filterByBlogPostId)
         {
@@ -86,6 +96,8 @@ namespace Nop.Web.Areas.Admin.Factories
             //prepare available stores
             _baseAdminModelFactory.PrepareStores(searchModel.AvailableStores);
 
+            searchModel.HideStoresList = _catalogSettings.IgnoreStoreLimitations || searchModel.AvailableStores.SelectionIsNotPossible();
+
             //prepare page parameters
             searchModel.SetGridPageSize();
 
@@ -101,15 +113,15 @@ namespace Nop.Web.Areas.Admin.Factories
         {
             if (searchModel == null)
                 throw new ArgumentNullException(nameof(searchModel));
-            
+
             //get blog posts
-            var blogPosts = _blogService.GetAllBlogPosts(searchModel.SearchStoreId, showHidden: true,
+            var blogPosts = _blogService.GetAllBlogPosts(storeId: searchModel.SearchStoreId, showHidden: true,
                 pageIndex: searchModel.Page - 1, pageSize: searchModel.PageSize);
 
             //prepare list model
-            var model = new BlogPostListModel
+            var model = new BlogPostListModel().PrepareToGrid(searchModel, blogPosts, () =>
             {
-                Data = blogPosts.Select(blogPost =>
+                return blogPosts.Select(blogPost =>
                 {
                     //fill in model values from the entity
                     var blogPostModel = blogPost.ToModel<BlogPostModel>();
@@ -119,20 +131,20 @@ namespace Nop.Web.Areas.Admin.Factories
 
                     //convert dates to the user time
                     if (blogPost.StartDateUtc.HasValue)
-                        blogPostModel.StartDate = _dateTimeHelper.ConvertToUserTime(blogPost.StartDateUtc.Value, DateTimeKind.Utc);
+                        blogPostModel.StartDateUtc = _dateTimeHelper.ConvertToUserTime(blogPost.StartDateUtc.Value, DateTimeKind.Utc);
                     if (blogPost.EndDateUtc.HasValue)
-                        blogPostModel.EndDate = _dateTimeHelper.ConvertToUserTime(blogPost.EndDateUtc.Value, DateTimeKind.Utc);
+                        blogPostModel.EndDateUtc = _dateTimeHelper.ConvertToUserTime(blogPost.EndDateUtc.Value, DateTimeKind.Utc);
                     blogPostModel.CreatedOn = _dateTimeHelper.ConvertToUserTime(blogPost.CreatedOnUtc, DateTimeKind.Utc);
 
                     //fill in additional values (not existing in the entity)
                     blogPostModel.LanguageName = _languageService.GetLanguageById(blogPost.LanguageId)?.Name;
                     blogPostModel.ApprovedComments = _blogService.GetBlogCommentsCount(blogPost, isApproved: true);
                     blogPostModel.NotApprovedComments = _blogService.GetBlogCommentsCount(blogPost, isApproved: false);
+                    blogPostModel.SeName = _urlRecordService.GetSeName(blogPost, blogPost.LanguageId, true, false);
 
                     return blogPostModel;
-                }),
-                Total = blogPosts.TotalCount
-            };
+                });
+            });
 
             return model;
         }
@@ -149,9 +161,13 @@ namespace Nop.Web.Areas.Admin.Factories
             //fill in model values from the entity
             if (blogPost != null)
             {
-                model = model ?? blogPost.ToModel<BlogPostModel>();
-                model.StartDate = blogPost.StartDateUtc;
-                model.EndDate = blogPost.EndDateUtc;
+                if (model == null)
+                {
+                    model = blogPost.ToModel<BlogPostModel>();
+                    model.SeName = _urlRecordService.GetSeName(blogPost, blogPost.LanguageId, true, false);
+                }
+                model.StartDateUtc = blogPost.StartDateUtc;
+                model.EndDateUtc = blogPost.EndDateUtc;
             }
 
             //set default values for the new model
@@ -213,7 +229,7 @@ namespace Nop.Web.Areas.Admin.Factories
         {
             if (searchModel == null)
                 throw new ArgumentNullException(nameof(searchModel));
-            
+
             //get parameters to filter comments
             var createdOnFromValue = searchModel.CreatedOnFrom == null ? null
                 : (DateTime?)_dateTimeHelper.ConvertToUtcTime(searchModel.CreatedOnFrom.Value, _dateTimeHelper.CurrentTimeZone);
@@ -226,15 +242,15 @@ namespace Nop.Web.Areas.Admin.Factories
                 approved: isApprovedOnly,
                 fromUtc: createdOnFromValue,
                 toUtc: createdOnToValue,
-                commentText: searchModel.SearchText);
+                commentText: searchModel.SearchText).ToPagedList(searchModel);
 
             //prepare store names (to avoid loading for each comment)
             var storeNames = _storeService.GetAllStores().ToDictionary(store => store.Id, store => store.Name);
 
             //prepare list model
-            var model = new BlogCommentListModel
+            var model = new BlogCommentListModel().PrepareToGrid(searchModel, comments, () =>
             {
-                Data = comments.PaginationByRequestModel(searchModel).Select(blogComment =>
+                return comments.Select(blogComment =>
                 {
                     //fill in model values from the entity
                     var commentModel = blogComment.ToModel<BlogCommentModel>();
@@ -247,9 +263,8 @@ namespace Nop.Web.Areas.Admin.Factories
                     commentModel.StoreName = storeNames.ContainsKey(blogComment.StoreId) ? storeNames[blogComment.StoreId] : "Deleted";
 
                     return commentModel;
-                }),
-                Total = comments.Count
-            };
+                });
+            });
 
             return model;
         }

@@ -31,7 +31,7 @@ namespace Nop.Services.Catalog
         /// Gets all products displayed on the home page
         /// </summary>
         /// <returns>Products</returns>
-        IList<Product> GetAllProductsDisplayedOnHomePage();
+        IList<Product> GetAllProductsDisplayedOnHomepage();
 
         /// <summary>
         /// Gets product
@@ -371,6 +371,13 @@ namespace Nop.Services.Catalog
         /// <param name="date">Date</param>
         /// <returns>Formatted date</returns>
         string FormatRentalDate(Product product, DateTime date);
+
+        /// <summary>
+        /// Update product store mappings
+        /// </summary>
+        /// <param name="product">Product</param>
+        /// <param name="limitedToStoresIds">A list of store ids for mapping</param>
+        void UpdateProductStoreMappings(Product product, IList<int> limitedToStoresIds);
 
         #endregion
 

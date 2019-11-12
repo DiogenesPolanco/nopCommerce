@@ -9,14 +9,16 @@ using Nop.Core.Domain.Localization;
 using Nop.Core.Infrastructure;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Services.Stores;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
 using Nop.Web.Areas.Admin.Models.Localization;
-using Nop.Web.Framework.Kendoui;
 using Nop.Web.Framework.Mvc;
 using Nop.Web.Framework.Mvc.Filters;
+using Nop.Web.Framework.Mvc.ModelBinding;
+using Nop.Web.Framework.Validators;
 
 namespace Nop.Web.Areas.Admin.Controllers
 {
@@ -35,6 +37,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ILanguageService _languageService;
         private readonly ILocalizationService _localizationService;
         private readonly INopFileProvider _fileProvider;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly IStoreMappingService _storeMappingService;
         private readonly IStoreService _storeService;
@@ -48,18 +51,20 @@ namespace Nop.Web.Areas.Admin.Controllers
             ILanguageService languageService,
             ILocalizationService localizationService,
             INopFileProvider fileProvider,
+            INotificationService notificationService,
             IPermissionService permissionService,
             IStoreMappingService storeMappingService,
             IStoreService storeService)
         {
-            this._customerActivityService = customerActivityService;
-            this._languageModelFactory = languageModelFactory;
-            this._languageService = languageService;
-            this._localizationService = localizationService;
-            this._fileProvider = fileProvider;
-            this._permissionService = permissionService;
-            this._storeMappingService = storeMappingService;
-            this._storeService = storeService;
+            _customerActivityService = customerActivityService;
+            _languageModelFactory = languageModelFactory;
+            _languageService = languageService;
+            _localizationService = localizationService;
+            _fileProvider = fileProvider;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _storeMappingService = storeMappingService;
+            _storeService = storeService;
         }
 
         #endregion
@@ -114,7 +119,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult List(LanguageSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageLanguages))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _languageModelFactory.PrepareLanguageListModel(searchModel);
@@ -151,13 +156,10 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //Stores
                 SaveStoreMappings(language, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Added"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
 
                 return RedirectToAction("Edit", new { id = language.Id });
             }
@@ -202,7 +204,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 var allLanguages = _languageService.GetAllLanguages(loadCacheableCopy: false);
                 if (allLanguages.Count == 1 && allLanguages[0].Id == language.Id && !model.Published)
                 {
-                    ErrorNotification(_localizationService.GetResource("Admin.Configuration.Languages.PublishedLanguageRequired"));
+                    _notificationService.ErrorNotification(_localizationService.GetResource("Admin.Configuration.Languages.PublishedLanguageRequired"));
                     return RedirectToAction("Edit", new { id = language.Id });
                 }
 
@@ -218,13 +220,10 @@ namespace Nop.Web.Areas.Admin.Controllers
                 SaveStoreMappings(language, model);
 
                 //notification
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Updated"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
 
                 return RedirectToAction("Edit", new { id = language.Id });
             }
@@ -251,7 +250,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             var allLanguages = _languageService.GetAllLanguages(loadCacheableCopy: false);
             if (allLanguages.Count == 1 && allLanguages[0].Id == language.Id)
             {
-                ErrorNotification(_localizationService.GetResource("Admin.Configuration.Languages.PublishedLanguageRequired"));
+                _notificationService.ErrorNotification(_localizationService.GetResource("Admin.Configuration.Languages.PublishedLanguageRequired"));
                 return RedirectToAction("Edit", new { id = language.Id });
             }
 
@@ -263,7 +262,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 string.Format(_localizationService.GetResource("ActivityLog.DeleteLanguage"), language.Id), language);
 
             //notification
-            SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Deleted"));
 
             return RedirectToAction("List");
         }
@@ -296,7 +295,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult Resources(LocaleResourceSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageLanguages))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a language with the specified id
             var language = _languageService.GetLanguageById(searchModel.LanguageId, false);
@@ -309,74 +308,75 @@ namespace Nop.Web.Areas.Admin.Controllers
             return Json(model);
         }
 
+        //ValidateAttribute is used to force model validation
         [HttpPost]
-        public virtual IActionResult ResourceUpdate(LocaleResourceModel model)
+        public virtual IActionResult ResourceUpdate([Validate] LocaleResourceModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageLanguages))
                 return AccessDeniedView();
 
-            if (model.Name != null)
-                model.Name = model.Name.Trim();
-            if (model.Value != null)
-                model.Value = model.Value.Trim();
+            if (model.ResourceName != null)
+                model.ResourceName = model.ResourceName.Trim();
+            if (model.ResourceValue != null)
+                model.ResourceValue = model.ResourceValue.Trim();
 
             if (!ModelState.IsValid)
             {
-                return Json(new DataSourceResult { Errors = ModelState.SerializeErrors() });
+                return ErrorJson(ModelState.SerializeErrors());
             }
 
             var resource = _localizationService.GetLocaleStringResourceById(model.Id);
             // if the resourceName changed, ensure it isn't being used by another resource
-            if (!resource.ResourceName.Equals(model.Name, StringComparison.InvariantCultureIgnoreCase))
+            if (!resource.ResourceName.Equals(model.ResourceName, StringComparison.InvariantCultureIgnoreCase))
             {
-                var res = _localizationService.GetLocaleStringResourceByName(model.Name, model.LanguageId, false);
+                var res = _localizationService.GetLocaleStringResourceByName(model.ResourceName, model.LanguageId, false);
                 if (res != null && res.Id != resource.Id)
                 {
-                    return Json(new DataSourceResult { Errors = string.Format(_localizationService.GetResource("Admin.Configuration.Languages.Resources.NameAlreadyExists"), res.ResourceName) });
+                    return ErrorJson(string.Format(_localizationService.GetResource("Admin.Configuration.Languages.Resources.NameAlreadyExists"), res.ResourceName));
                 }
             }
 
-            resource.ResourceName = model.Name;
-            resource.ResourceValue = model.Value;
+            //fill entity from model
+            resource = model.ToEntity(resource);
+
             _localizationService.UpdateLocaleStringResource(resource);
 
             return new NullJsonResult();
         }
 
+        //ValidateAttribute is used to force model validation
         [HttpPost]
-        public virtual IActionResult ResourceAdd(int languageId, LocaleResourceModel model)
+        public virtual IActionResult ResourceAdd(int languageId, [Validate] LocaleResourceModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageLanguages))
                 return AccessDeniedView();
 
-            if (model.Name != null)
-                model.Name = model.Name.Trim();
-            if (model.Value != null)
-                model.Value = model.Value.Trim();
+            if (model.ResourceName != null)
+                model.ResourceName = model.ResourceName.Trim();
+            if (model.ResourceValue != null)
+                model.ResourceValue = model.ResourceValue.Trim();
 
             if (!ModelState.IsValid)
             {
-                return Json(new DataSourceResult { Errors = ModelState.SerializeErrors() });
+                return ErrorJson(ModelState.SerializeErrors());
             }
 
-            var res = _localizationService.GetLocaleStringResourceByName(model.Name, model.LanguageId, false);
+            var res = _localizationService.GetLocaleStringResourceByName(model.ResourceName, model.LanguageId, false);
             if (res == null)
             {
-                var resource = new LocaleStringResource
-                {
-                    LanguageId = languageId,
-                    ResourceName = model.Name,
-                    ResourceValue = model.Value
-                };
+                //fill entity from model
+                var resource = model.ToEntity<LocaleStringResource>();
+
+                resource.LanguageId = languageId;
 
                 _localizationService.InsertLocaleStringResource(resource);
             }
             else
             {
-                return Json(new DataSourceResult { Errors = string.Format(_localizationService.GetResource("Admin.Configuration.Languages.Resources.NameAlreadyExists"), model.Name) });
+                return ErrorJson(string.Format(_localizationService.GetResource("Admin.Configuration.Languages.Resources.NameAlreadyExists"), model.ResourceName));
             }
 
-            return new NullJsonResult();
+            return Json(new { Result = true });
         }
 
         [HttpPost]
@@ -415,7 +415,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("List");
             }
         }
@@ -437,21 +437,21 @@ namespace Nop.Web.Areas.Admin.Controllers
                 {
                     using (var sr = new StreamReader(importxmlfile.OpenReadStream(), Encoding.UTF8))
                     {
-                        _localizationService.ImportResourcesFromXml(language, sr.ReadToEnd());
+                        _localizationService.ImportResourcesFromXml(language, sr);
                     }
                 }
                 else
                 {
-                    ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
-                    return RedirectToAction("Edit", new {id = language.Id});
+                    _notificationService.ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
+                    return RedirectToAction("Edit", new { id = language.Id });
                 }
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Imported"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Imported"));
                 return RedirectToAction("Edit", new { id = language.Id });
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("Edit", new { id = language.Id });
             }
         }

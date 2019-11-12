@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Nop.Core.Domain.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Areas.Admin.Models.Common;
@@ -18,6 +19,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ICommonModelFactory _commonModelFactory;
         private readonly IHomeModelFactory _homeModelFactory;
         private readonly ILocalizationService _localizationService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly ISettingService _settingService;
 
@@ -29,15 +31,17 @@ namespace Nop.Web.Areas.Admin.Controllers
             ICommonModelFactory commonModelFactory,
             IHomeModelFactory homeModelFactory,
             ILocalizationService localizationService,
+            INotificationService notificationService,
             IPermissionService permissionService,
             ISettingService settingService)
         {
-            this._adminAreaSettings = adminAreaSettings;
-            this._commonModelFactory = commonModelFactory;
-            this._homeModelFactory = homeModelFactory;
-            this._localizationService = localizationService;
-            this._permissionService = permissionService;
-            this._settingService = settingService;
+            _adminAreaSettings = adminAreaSettings;
+            _commonModelFactory = commonModelFactory;
+            _homeModelFactory = homeModelFactory;
+            _localizationService = localizationService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _settingService = settingService;
         }
 
         #endregion
@@ -53,7 +57,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 if (warnings.Any(warning => warning.Level == SystemWarningLevel.Fail ||
                                             warning.Level == SystemWarningLevel.CopyrightRemovalKey ||
                                             warning.Level == SystemWarningLevel.Warning))
-                    WarningNotification(_localizationService.GetResource("Admin.System.Warnings.Errors"), false);
+                    _notificationService.WarningNotification(
+                        string.Format(_localizationService.GetResource("Admin.System.Warnings.Errors"),
+                        Url.Action("Warnings", "Common")),
+                        //do not encode URLs
+                        false);
             }
 
             //prepare model

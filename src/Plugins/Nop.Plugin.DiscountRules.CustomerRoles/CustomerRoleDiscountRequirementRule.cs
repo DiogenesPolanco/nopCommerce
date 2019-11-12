@@ -1,12 +1,13 @@
-using System;
+﻿using System;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Nop.Core.Plugins;
+using Nop.Core;
 using Nop.Services.Configuration;
 using Nop.Services.Discounts;
 using Nop.Services.Localization;
+using Nop.Services.Plugins;
 
 namespace Nop.Plugin.DiscountRules.CustomerRoles
 {
@@ -19,6 +20,7 @@ namespace Nop.Plugin.DiscountRules.CustomerRoles
         private readonly ILocalizationService _localizationService;
         private readonly ISettingService _settingService;
         private readonly IUrlHelperFactory _urlHelperFactory;
+        private readonly IWebHelper _webHelper;
 
         #endregion
 
@@ -28,13 +30,15 @@ namespace Nop.Plugin.DiscountRules.CustomerRoles
             IDiscountService discountService,
             ILocalizationService localizationService,
             ISettingService settingService,
-            IUrlHelperFactory urlHelperFactory)
+            IUrlHelperFactory urlHelperFactory,
+            IWebHelper webHelper)
         {
-            this._actionContextAccessor = actionContextAccessor;
-            this._discountService = discountService;
-            this._localizationService = localizationService;
-            this._settingService = settingService;
-            this._urlHelperFactory = urlHelperFactory;
+            _actionContextAccessor = actionContextAccessor;
+            _discountService = discountService;
+            _localizationService = localizationService;
+            _settingService = settingService;
+            _urlHelperFactory = urlHelperFactory;
+            _webHelper = webHelper;
         }
 
         #endregion
@@ -77,8 +81,9 @@ namespace Nop.Plugin.DiscountRules.CustomerRoles
         public string GetConfigurationUrl(int discountId, int? discountRequirementId)
         {
             var urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
-            return urlHelper.Action("Configure", "DiscountRulesCustomerRoles",
-                new { discountId = discountId, discountRequirementId = discountRequirementId }).TrimStart('/');
+            
+            return urlHelper.Action("Configure", "DiscountRulesCustomerRoles", 
+                new { discountId = discountId, discountRequirementId = discountRequirementId }, _webHelper.CurrentRequestProtocol);
         }
 
         /// <summary>

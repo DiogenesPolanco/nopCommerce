@@ -5,6 +5,7 @@ using Nop.Core.Domain.Common;
 using Nop.Services.Affiliates;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
@@ -22,6 +23,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly IAffiliateService _affiliateService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly ILocalizationService _localizationService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
 
         #endregion
@@ -32,13 +34,15 @@ namespace Nop.Web.Areas.Admin.Controllers
             IAffiliateService affiliateService,
             ICustomerActivityService customerActivityService,
             ILocalizationService localizationService,
+            INotificationService notificationService,
             IPermissionService permissionService)
         {
-            this._affiliateModelFactory = affiliateModelFactory;
-            this._affiliateService = affiliateService;
-            this._customerActivityService = customerActivityService;
-            this._localizationService = localizationService;
-            this._permissionService = permissionService;
+            _affiliateModelFactory = affiliateModelFactory;
+            _affiliateService = affiliateService;
+            _customerActivityService = customerActivityService;
+            _localizationService = localizationService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
         }
 
         #endregion
@@ -65,7 +69,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult List(AffiliateSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAffiliates))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _affiliateModelFactory.PrepareAffiliateListModel(searchModel);
@@ -114,7 +118,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("AddNewAffiliate",
                     string.Format(_localizationService.GetResource("ActivityLog.AddNewAffiliate"), affiliate.Id), affiliate);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Affiliates.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Affiliates.Added"));
 
                 return continueEditing ? RedirectToAction("Edit", new { id = affiliate.Id }) : RedirectToAction("List");
             }
@@ -175,13 +179,10 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("EditAffiliate",
                     string.Format(_localizationService.GetResource("ActivityLog.EditAffiliate"), affiliate.Id), affiliate);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Affiliates.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Affiliates.Updated"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
 
                 return RedirectToAction("Edit", new { id = affiliate.Id });
             }
@@ -211,7 +212,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             _customerActivityService.InsertActivity("DeleteAffiliate",
                 string.Format(_localizationService.GetResource("ActivityLog.DeleteAffiliate"), affiliate.Id), affiliate);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Affiliates.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Affiliates.Deleted"));
 
             return RedirectToAction("List");
         }
@@ -220,7 +221,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult AffiliatedOrderListGrid(AffiliatedOrderSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAffiliates))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get an affiliate with the specified id
             var affiliate = _affiliateService.GetAffiliateById(searchModel.AffliateId)
@@ -236,7 +237,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult AffiliatedCustomerList(AffiliatedCustomerSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAffiliates))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get an affiliate with the specified id
             var affiliate = _affiliateService.GetAffiliateById(searchModel.AffliateId)

@@ -25,6 +25,11 @@
         /// <summary>
         /// Gets a key pattern to clear cache
         /// </summary>
-        public static string MessageTemplatesPatternCacheKey => "Nop.messagetemplate.";
+        public static string MessageTemplatesPrefixCacheKey => "Nop.messagetemplate.";
+
+        /// <summary>
+        /// Gets a key for notifications list from TempDataDictionary
+        /// </summary>
+        public static string NotificationListKey => "NotificationList";
     }
 }

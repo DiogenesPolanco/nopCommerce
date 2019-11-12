@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Nop.Core.Domain.Vendors;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Services.Vendors;
 using Nop.Web.Areas.Admin.Factories;
@@ -20,6 +21,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ICustomerActivityService _customerActivityService;
         private readonly ILocalizationService _localizationService;
         private readonly ILocalizedEntityService _localizedEntityService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly IVendorAttributeModelFactory _vendorAttributeModelFactory;
         private readonly IVendorAttributeService _vendorAttributeService;
@@ -31,16 +33,18 @@ namespace Nop.Web.Areas.Admin.Controllers
         public VendorAttributeController(ICustomerActivityService customerActivityService,
             ILocalizationService localizationService,
             ILocalizedEntityService localizedEntityService,
+            INotificationService notificationService,
             IPermissionService permissionService,
             IVendorAttributeModelFactory vendorAttributeModelFactory,
             IVendorAttributeService vendorAttributeService)
         {
-            this._customerActivityService = customerActivityService;
-            this._localizationService = localizationService;
-            this._localizedEntityService = localizedEntityService;
-            this._permissionService = permissionService;
-            this._vendorAttributeModelFactory = vendorAttributeModelFactory;
-            this._vendorAttributeService = vendorAttributeService;
+            _customerActivityService = customerActivityService;
+            _localizationService = localizationService;
+            _localizedEntityService = localizedEntityService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _vendorAttributeModelFactory = vendorAttributeModelFactory;
+            _vendorAttributeService = vendorAttributeService;
         }
 
         #endregion
@@ -91,7 +95,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult List(VendorAttributeSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _vendorAttributeModelFactory.PrepareVendorAttributeListModel(searchModel);
@@ -128,14 +132,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateAttributeLocales(vendorAttribute, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Vendors.VendorAttributes.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Vendors.VendorAttributes.Added"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
-
+                
                 return RedirectToAction("Edit", new { id = vendorAttribute.Id });
             }
 
@@ -185,13 +186,10 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateAttributeLocales(vendorAttribute, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Vendors.VendorAttributes.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Vendors.VendorAttributes.Updated"));
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
-
+                
                 return RedirectToAction("Edit", new { id = vendorAttribute.Id });
             }
 
@@ -219,7 +217,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             _customerActivityService.InsertActivity("DeleteVendorAttribute",
                 string.Format(_localizationService.GetResource("ActivityLog.DeleteVendorAttribute"), vendorAttribute.Id), vendorAttribute);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Vendors.VendorAttributes.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Vendors.VendorAttributes.Deleted"));
 
             return RedirectToAction("List");
         }
@@ -232,7 +230,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ValueList(VendorAttributeValueSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a vendor attribute with the specified id
             var vendorAttribute = _vendorAttributeService.GetVendorAttributeById(searchModel.VendorAttributeId)

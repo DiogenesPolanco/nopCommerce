@@ -38,6 +38,11 @@ namespace Nop.Core.Domain.Common
         public bool RichEditorAllowStyleTag { get; set; }
 
         /// <summary>
+        /// A value indicating whether to use rich text editor on email messages for customers
+        /// </summary>
+        public bool UseRichEditorForCustomerEmails { get; set; }
+
+        /// <summary>
         /// A value indicating whether to use rich editor on message templates and campaigns details pages
         /// </summary>
         public bool UseRichEditorInMessageTemplates { get; set; }
@@ -58,13 +63,8 @@ namespace Nop.Core.Domain.Common
         public string LastNewsTitleAdminArea { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether to use IsoDateFormat in JSON results (used for avoiding issue with dates in KendoUI grids)
+        /// Gets or sets a value indicating whether to use IsoDateFormat in JSON results (used for avoiding issue with dates in grids)
         /// </summary>
         public bool UseIsoDateFormatInJsonResult { get; set; }
-
-        /// <summary>
-        /// Indicates whether to use nested setting design
-        /// </summary>
-        public bool UseNestedSetting { get; set; }
     }
 }

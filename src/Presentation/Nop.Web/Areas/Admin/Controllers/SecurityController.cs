@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using Nop.Core;
@@ -9,6 +10,7 @@ using Nop.Core.Domain.Security;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Areas.Admin.Models.Security;
@@ -22,6 +24,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ICustomerService _customerService;
         private readonly ILocalizationService _localizationService;
         private readonly ILogger _logger;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly ISecurityModelFactory _securityModelFactory;
         private readonly IWorkContext _workContext;
@@ -33,16 +36,18 @@ namespace Nop.Web.Areas.Admin.Controllers
         public SecurityController(ICustomerService customerService,
             ILocalizationService localizationService,
             ILogger logger,
+            INotificationService notificationService,
             IPermissionService permissionService,
             ISecurityModelFactory securityModelFactory,
             IWorkContext workContext)
         {
-            this._customerService = customerService;
-            this._localizationService = localizationService;
-            this._logger = logger;
-            this._permissionService = permissionService;
-            this._securityModelFactory = securityModelFactory;
-            this._workContext = workContext;
+            _customerService = customerService;
+            _localizationService = localizationService;
+            _logger = logger;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _securityModelFactory = securityModelFactory;
+            _workContext = workContext;
         }
 
         #endregion
@@ -75,7 +80,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         }
 
         [HttpPost, ActionName("Permissions")]
-        public virtual IActionResult PermissionsSave(PermissionMappingModel model)
+        public virtual IActionResult PermissionsSave(PermissionMappingModel model, IFormCollection form)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAcl))
                 return AccessDeniedView();
@@ -86,8 +91,8 @@ namespace Nop.Web.Areas.Admin.Controllers
             foreach (var cr in customerRoles)
             {
                 var formKey = "allow_" + cr.Id;
-                var permissionRecordSystemNamesToRestrict = !StringValues.IsNullOrEmpty(model.Form[formKey])
-                    ? model.Form[formKey].ToString().Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList()
+                var permissionRecordSystemNamesToRestrict = !StringValues.IsNullOrEmpty(form[formKey])
+                    ? form[formKey].ToString().Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList()
                     : new List<string>();
 
                 foreach (var pr in permissionRecords)
@@ -113,7 +118,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 }
             }
 
-            SuccessNotification(_localizationService.GetResource("Admin.Configuration.ACL.Updated"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.ACL.Updated"));
 
             return RedirectToAction("Permissions");
         }

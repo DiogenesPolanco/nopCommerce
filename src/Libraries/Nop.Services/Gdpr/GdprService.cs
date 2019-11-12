@@ -63,21 +63,21 @@ namespace Nop.Services.Gdpr
             IShoppingCartService shoppingCartService,
             IStoreService storeService)
         {
-            this._addressService = addressService;
-            this._backInStockSubscriptionService = backInStockSubscriptionService;
-            this._blogService = blogService;
-            this._customerService = customerService;
-            this._externalAuthenticationService = externalAuthenticationService;
-            this._eventPublisher = eventPublisher;
-            this._forumService = forumService;
-            this._genericAttributeService = genericAttributeService;
-            this._newsService = newsService;
-            this._newsLetterSubscriptionService = newsLetterSubscriptionService;
-            this._productService = productService;
-            this._gdprConsentRepository = gdprConsentRepository;
-            this._gdprLogRepository = gdprLogRepository;
-            this._shoppingCartService = shoppingCartService;
-            this._storeService = storeService;
+            _addressService = addressService;
+            _backInStockSubscriptionService = backInStockSubscriptionService;
+            _blogService = blogService;
+            _customerService = customerService;
+            _externalAuthenticationService = externalAuthenticationService;
+            _eventPublisher = eventPublisher;
+            _forumService = forumService;
+            _genericAttributeService = genericAttributeService;
+            _newsService = newsService;
+            _newsLetterSubscriptionService = newsLetterSubscriptionService;
+            _productService = productService;
+            _gdprConsentRepository = gdprConsentRepository;
+            _gdprLogRepository = gdprLogRepository;
+            _shoppingCartService = shoppingCartService;
+            _storeService = storeService;
         }
 
         #endregion
@@ -400,14 +400,14 @@ namespace Nop.Services.Gdpr
             if (customer.IsRegistered())
             {
                 var registeredRole = _customerService.GetCustomerRoleBySystemName(NopCustomerDefaults.RegisteredRoleName);
-                customer.CustomerCustomerRoleMappings
-                    .Remove(customer.CustomerCustomerRoleMappings.FirstOrDefault(mapping => mapping.CustomerRoleId == registeredRole.Id));
+                customer.RemoveCustomerRoleMapping(
+                    customer.CustomerCustomerRoleMappings.FirstOrDefault(mapping => mapping.CustomerRoleId == registeredRole.Id));
             }
 
             if (!customer.IsGuest())
             {
                 var guestRole = _customerService.GetCustomerRoleBySystemName(NopCustomerDefaults.GuestsRoleName);
-                customer.CustomerCustomerRoleMappings.Add(new CustomerCustomerRoleMapping { CustomerRole = guestRole });
+                customer.AddCustomerRoleMapping(new CustomerCustomerRoleMapping { CustomerRole = guestRole });
             }
 
             var email = customer.Email;

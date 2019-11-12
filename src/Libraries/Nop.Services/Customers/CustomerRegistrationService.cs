@@ -49,18 +49,18 @@ namespace Nop.Services.Customers
             IWorkflowMessageService workflowMessageService,
             RewardPointsSettings rewardPointsSettings)
         {
-            this._customerSettings = customerSettings;
-            this._customerService = customerService;
-            this._encryptionService = encryptionService;
-            this._eventPublisher = eventPublisher;
-            this._genericAttributeService = genericAttributeService;
-            this._localizationService = localizationService;
-            this._newsLetterSubscriptionService = newsLetterSubscriptionService;
-            this._rewardPointService = rewardPointService;
-            this._storeService = storeService;
-            this._workContext = workContext;
-            this._workflowMessageService = workflowMessageService;
-            this._rewardPointsSettings = rewardPointsSettings;
+            _customerSettings = customerSettings;
+            _customerService = customerService;
+            _encryptionService = encryptionService;
+            _eventPublisher = eventPublisher;
+            _genericAttributeService = genericAttributeService;
+            _localizationService = localizationService;
+            _newsLetterSubscriptionService = newsLetterSubscriptionService;
+            _rewardPointService = rewardPointService;
+            _storeService = storeService;
+            _workContext = workContext;
+            _workflowMessageService = workflowMessageService;
+            _rewardPointsSettings = rewardPointsSettings;
         }
 
         #endregion
@@ -258,14 +258,14 @@ namespace Nop.Services.Customers
             if (registeredRole == null)
                 throw new NopException("'Registered' role could not be loaded");
             //request.Customer.CustomerRoles.Add(registeredRole);
-            request.Customer.CustomerCustomerRoleMappings.Add(new CustomerCustomerRoleMapping { CustomerRole = registeredRole });
+            request.Customer.AddCustomerRoleMapping(new CustomerCustomerRoleMapping { CustomerRole = registeredRole });
             //remove from 'Guests' role
             var guestRole = request.Customer.CustomerRoles.FirstOrDefault(cr => cr.SystemName == NopCustomerDefaults.GuestsRoleName);
             if (guestRole != null)
             {
                 //request.Customer.CustomerRoles.Remove(guestRole);
-                request.Customer.CustomerCustomerRoleMappings
-                    .Remove(request.Customer.CustomerCustomerRoleMappings.FirstOrDefault(mapping => mapping.CustomerRoleId == guestRole.Id));
+                request.Customer.RemoveCustomerRoleMapping(
+                    request.Customer.CustomerCustomerRoleMappings.FirstOrDefault(mapping => mapping.CustomerRoleId == guestRole.Id));
             }
 
             //add reward points for customer registration (if enabled)
@@ -351,7 +351,8 @@ namespace Nop.Services.Customers
                 case PasswordFormat.Hashed:
                     var saltKey = _encryptionService.CreateSaltKey(NopCustomerServiceDefaults.PasswordSaltKeySize);
                     customerPassword.PasswordSalt = saltKey;
-                    customerPassword.Password = _encryptionService.CreatePasswordHash(request.NewPassword, saltKey, _customerSettings.HashedPasswordFormat);
+                    customerPassword.Password = _encryptionService.CreatePasswordHash(request.NewPassword, saltKey,
+                        request.HashedPasswordFormat ?? _customerSettings.HashedPasswordFormat);
                     break;
             }
 

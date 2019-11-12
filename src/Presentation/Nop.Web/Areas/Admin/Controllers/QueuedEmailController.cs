@@ -21,6 +21,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
         private readonly IDateTimeHelper _dateTimeHelper;
         private readonly ILocalizationService _localizationService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly IQueuedEmailModelFactory _queuedEmailModelFactory;
         private readonly IQueuedEmailService _queuedEmailService;
@@ -31,15 +32,17 @@ namespace Nop.Web.Areas.Admin.Controllers
 
         public QueuedEmailController(IDateTimeHelper dateTimeHelper,
             ILocalizationService localizationService,
+            INotificationService notificationService,
             IPermissionService permissionService,
             IQueuedEmailModelFactory queuedEmailModelFactory,
             IQueuedEmailService queuedEmailService)
         {
-            this._dateTimeHelper = dateTimeHelper;
-            this._localizationService = localizationService;
-            this._permissionService = permissionService;
-            this._queuedEmailModelFactory = queuedEmailModelFactory;
-            this._queuedEmailService = queuedEmailService;
+            _dateTimeHelper = dateTimeHelper;
+            _localizationService = localizationService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _queuedEmailModelFactory = queuedEmailModelFactory;
+            _queuedEmailService = queuedEmailService;
         }
 
         #endregion
@@ -66,7 +69,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult QueuedEmailList(QueuedEmailSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMessageQueue))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _queuedEmailModelFactory.PrepareQueuedEmailListModel(searchModel);
@@ -122,7 +125,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                     null : (DateTime?)_dateTimeHelper.ConvertToUtcTime(model.DontSendBeforeDate.Value);
                 _queuedEmailService.UpdateQueuedEmail(email);
 
-                SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Updated"));
 
                 return continueEditing ? RedirectToAction("Edit", new { id = email.Id }) : RedirectToAction("List");
             }
@@ -168,7 +171,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             };
             _queuedEmailService.InsertQueuedEmail(requeuedEmail);
 
-            SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Requeued"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Requeued"));
 
             return RedirectToAction("Edit", new { id = requeuedEmail.Id });
         }
@@ -186,7 +189,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             _queuedEmailService.DeleteQueuedEmail(email);
 
-            SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Deleted"));
 
             return RedirectToAction("List");
         }
@@ -212,7 +215,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             _queuedEmailService.DeleteAllEmails();
 
-            SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.DeletedAll"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.DeletedAll"));
 
             return RedirectToAction("List");
         }

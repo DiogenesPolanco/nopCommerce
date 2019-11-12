@@ -13,6 +13,7 @@ using Nop.Services.ExportImport;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Media;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Services.Seo;
 using Nop.Services.Stores;
@@ -39,6 +40,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ILocalizedEntityService _localizedEntityService;
         private readonly IManufacturerModelFactory _manufacturerModelFactory;
         private readonly IManufacturerService _manufacturerService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly IPictureService _pictureService;
         private readonly IProductService _productService;
@@ -61,6 +63,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             ILocalizedEntityService localizedEntityService,
             IManufacturerModelFactory manufacturerModelFactory,
             IManufacturerService manufacturerService,
+            INotificationService notificationService,
             IPermissionService permissionService,
             IPictureService pictureService,
             IProductService productService,
@@ -69,23 +72,24 @@ namespace Nop.Web.Areas.Admin.Controllers
             IUrlRecordService urlRecordService,
             IWorkContext workContext)
         {
-            this._aclService = aclService;
-            this._customerActivityService = customerActivityService;
-            this._customerService = customerService;
-            this._discountService = discountService;
-            this._exportManager = exportManager;
-            this._importManager = importManager;
-            this._localizationService = localizationService;
-            this._localizedEntityService = localizedEntityService;
-            this._manufacturerModelFactory = manufacturerModelFactory;
-            this._manufacturerService = manufacturerService;
-            this._permissionService = permissionService;
-            this._pictureService = pictureService;
-            this._productService = productService;
-            this._storeMappingService = storeMappingService;
-            this._storeService = storeService;
-            this._urlRecordService = urlRecordService;
-            this._workContext = workContext;
+            _aclService = aclService;
+            _customerActivityService = customerActivityService;
+            _customerService = customerService;
+            _discountService = discountService;
+            _exportManager = exportManager;
+            _importManager = importManager;
+            _localizationService = localizationService;
+            _localizedEntityService = localizedEntityService;
+            _manufacturerModelFactory = manufacturerModelFactory;
+            _manufacturerService = manufacturerService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _pictureService = pictureService;
+            _productService = productService;
+            _storeMappingService = storeMappingService;
+            _storeService = storeService;
+            _urlRecordService = urlRecordService;
+            _workContext = workContext;
         }
 
         #endregion
@@ -206,7 +210,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult List(ManufacturerSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _manufacturerModelFactory.PrepareManufacturerListModel(searchModel);
@@ -273,14 +277,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("AddNewManufacturer",
                     string.Format(_localizationService.GetResource("ActivityLog.AddNewManufacturer"), manufacturer.Name), manufacturer);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Added"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
-
+                
                 return RedirectToAction("Edit", new { id = manufacturer.Id });
             }
 
@@ -374,14 +375,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("EditManufacturer",
                     string.Format(_localizationService.GetResource("ActivityLog.EditManufacturer"), manufacturer.Name), manufacturer);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Updated"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
-
+                
                 return RedirectToAction("Edit", new { id = manufacturer.Id });
             }
 
@@ -409,7 +407,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             _customerActivityService.InsertActivity("DeleteManufacturer",
                 string.Format(_localizationService.GetResource("ActivityLog.DeleteManufacturer"), manufacturer.Name), manufacturer);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Deleted"));
 
             return RedirectToAction("List");
         }
@@ -431,7 +429,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("List");
             }
         }
@@ -449,7 +447,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("List");
             }
         }
@@ -472,16 +470,16 @@ namespace Nop.Web.Areas.Admin.Controllers
                 }
                 else
                 {
-                    ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
+                    _notificationService.ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
                     return RedirectToAction("List");
                 }
 
-                SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Imported"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Imported"));
                 return RedirectToAction("List");
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("List");
             }
         }
@@ -494,7 +492,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ProductList(ManufacturerProductSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a manufacturer with the specified id
             var manufacturer = _manufacturerService.GetManufacturerById(searchModel.ManufacturerId)
@@ -516,8 +514,8 @@ namespace Nop.Web.Areas.Admin.Controllers
             var productManufacturer = _manufacturerService.GetProductManufacturerById(model.Id)
                 ?? throw new ArgumentException("No product manufacturer mapping found with the specified id");
 
-            productManufacturer.IsFeaturedProduct = model.IsFeaturedProduct;
-            productManufacturer.DisplayOrder = model.DisplayOrder;
+            //fill entity from model
+            productManufacturer = model.ToEntity(productManufacturer);
             _manufacturerService.UpdateProductManufacturer(productManufacturer);
 
             return new NullJsonResult();
@@ -553,7 +551,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ProductAddPopupList(AddProductToManufacturerSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _manufacturerModelFactory.PrepareAddProductToManufacturerListModel(searchModel);

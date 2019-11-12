@@ -1,20 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Shipping;
-using Nop.Core.Plugins;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Events;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Plugins;
 using Nop.Services.Security;
 using Nop.Services.Shipping;
 using Nop.Services.Shipping.Date;
+using Nop.Services.Shipping.Pickup;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
 using Nop.Web.Areas.Admin.Models.Shipping;
@@ -31,12 +34,15 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ICountryService _countryService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly IDateRangeService _dateRangeService;
+        private readonly IEventPublisher _eventPublisher;
         private readonly ILocalizationService _localizationService;
         private readonly ILocalizedEntityService _localizedEntityService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
-        private readonly IPluginFinder _pluginFinder;
+        private readonly IPickupPluginManager _pickupPluginManager;
         private readonly ISettingService _settingService;
         private readonly IShippingModelFactory _shippingModelFactory;
+        private readonly IShippingPluginManager _shippingPluginManager;
         private readonly IShippingService _shippingService;
         private readonly ShippingSettings _shippingSettings;
 
@@ -48,27 +54,33 @@ namespace Nop.Web.Areas.Admin.Controllers
             ICountryService countryService,
             ICustomerActivityService customerActivityService,
             IDateRangeService dateRangeService,
+            IEventPublisher eventPublisher,
             ILocalizationService localizationService,
             ILocalizedEntityService localizedEntityService,
+            INotificationService notificationService,
             IPermissionService permissionService,
-            IPluginFinder pluginFinder,
+            IPickupPluginManager pickupPluginManager,
             ISettingService settingService,
             IShippingModelFactory shippingModelFactory,
+            IShippingPluginManager shippingPluginManager,
             IShippingService shippingService,
             ShippingSettings shippingSettings)
         {
-            this._addressService = addressService;
-            this._countryService = countryService;
-            this._customerActivityService = customerActivityService;
-            this._dateRangeService = dateRangeService;
-            this._localizationService = localizationService;
-            this._localizedEntityService = localizedEntityService;
-            this._permissionService = permissionService;
-            this._pluginFinder = pluginFinder;
-            this._settingService = settingService;
-            this._shippingModelFactory = shippingModelFactory;
-            this._shippingService = shippingService;
-            this._shippingSettings = shippingSettings;
+            _addressService = addressService;
+            _countryService = countryService;
+            _customerActivityService = customerActivityService;
+            _dateRangeService = dateRangeService;
+            _eventPublisher = eventPublisher;
+            _localizationService = localizationService;
+            _localizedEntityService = localizedEntityService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _pickupPluginManager = pickupPluginManager;
+            _settingService = settingService;
+            _shippingModelFactory = shippingModelFactory;
+            _shippingPluginManager = shippingPluginManager;
+            _shippingService = shippingService;
+            _shippingSettings = shippingSettings;
         }
 
         #endregion
@@ -119,7 +131,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult Providers(ShippingProviderSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _shippingModelFactory.PrepareShippingProviderListModel(searchModel);
@@ -133,8 +145,8 @@ namespace Nop.Web.Areas.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
                 return AccessDeniedView();
 
-            var srcm = _shippingService.LoadShippingRateComputationMethodBySystemName(model.SystemName);
-            if (_shippingService.IsShippingRateComputationMethodActive(srcm))
+            var srcm = _shippingPluginManager.LoadPluginBySystemName(model.SystemName);
+            if (_shippingPluginManager.IsPluginActive(srcm))
             {
                 if (!model.IsActive)
                 {
@@ -159,10 +171,10 @@ namespace Nop.Web.Areas.Admin.Controllers
             pluginDescriptor.DisplayOrder = model.DisplayOrder;
 
             //update the description file
-            PluginManager.SavePluginDescriptor(pluginDescriptor);
+            pluginDescriptor.Save();
 
-            //reset plugin cache
-            _pluginFinder.ReloadPlugins(pluginDescriptor);
+            //raise event
+            _eventPublisher.Publish(new PluginUpdatedEvent(pluginDescriptor));
 
             return new NullJsonResult();
         }
@@ -186,7 +198,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult PickupPointProviders(PickupPointProviderSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _shippingModelFactory.PreparePickupPointProviderListModel(searchModel);
@@ -200,8 +212,8 @@ namespace Nop.Web.Areas.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
                 return AccessDeniedView();
 
-            var pickupPointProvider = _shippingService.LoadPickupPointProviderBySystemName(model.SystemName);
-            if (_shippingService.IsPickupPointProviderActive(pickupPointProvider))
+            var pickupPointProvider = _pickupPluginManager.LoadPluginBySystemName(model.SystemName);
+            if (_pickupPluginManager.IsPluginActive(pickupPointProvider))
             {
                 if (!model.IsActive)
                 {
@@ -224,10 +236,10 @@ namespace Nop.Web.Areas.Admin.Controllers
             pluginDescriptor.DisplayOrder = model.DisplayOrder;
 
             //update the description file
-            PluginManager.SavePluginDescriptor(pluginDescriptor);
+            pluginDescriptor.Save();
 
-            //reset plugin cache
-            _pluginFinder.ReloadPlugins(pluginDescriptor);
+            //raise event
+            _eventPublisher.Publish(new PluginUpdatedEvent(pluginDescriptor));
 
             return new NullJsonResult();
         }
@@ -251,7 +263,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult Methods(ShippingMethodSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _shippingModelFactory.PrepareShippingMethodListModel(searchModel);
@@ -284,7 +296,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateLocales(sm, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Methods.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Methods.Added"));
                 return continueEditing ? RedirectToAction("EditMethod", new { id = sm.Id }) : RedirectToAction("Methods");
             }
 
@@ -330,7 +342,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateLocales(shippingMethod, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Methods.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Methods.Updated"));
 
                 return continueEditing ? RedirectToAction("EditMethod", shippingMethod.Id) : RedirectToAction("Methods");
             }
@@ -355,7 +367,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             _shippingService.DeleteShippingMethod(shippingMethod);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Methods.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Methods.Deleted"));
 
             return RedirectToAction("Methods");
         }
@@ -383,7 +395,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult DeliveryDates(DeliveryDateSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _shippingModelFactory.PrepareDeliveryDateListModel(searchModel);
@@ -416,7 +428,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateLocales(deliveryDate, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.DeliveryDates.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.DeliveryDates.Added"));
 
                 return continueEditing ? RedirectToAction("EditDeliveryDate", new { id = deliveryDate.Id }) : RedirectToAction("DatesAndRanges");
             }
@@ -463,7 +475,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateLocales(deliveryDate, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.DeliveryDates.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.DeliveryDates.Updated"));
 
                 return continueEditing ? RedirectToAction("EditDeliveryDate", deliveryDate.Id) : RedirectToAction("DatesAndRanges");
             }
@@ -488,7 +500,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             _dateRangeService.DeleteDeliveryDate(deliveryDate);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.DeliveryDates.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.DeliveryDates.Deleted"));
 
             return RedirectToAction("DatesAndRanges");
         }
@@ -501,7 +513,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ProductAvailabilityRanges(ProductAvailabilityRangeSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _shippingModelFactory.PrepareProductAvailabilityRangeListModel(searchModel);
@@ -534,7 +546,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateLocales(productAvailabilityRange, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.ProductAvailabilityRanges.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.ProductAvailabilityRanges.Added"));
 
                 return continueEditing ? RedirectToAction("EditProductAvailabilityRange", new { id = productAvailabilityRange.Id }) : RedirectToAction("DatesAndRanges");
             }
@@ -581,7 +593,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateLocales(productAvailabilityRange, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.ProductAvailabilityRanges.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.ProductAvailabilityRanges.Updated"));
 
                 return continueEditing ? RedirectToAction("EditProductAvailabilityRange", productAvailabilityRange.Id) : RedirectToAction("DatesAndRanges");
             }
@@ -606,7 +618,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             _dateRangeService.DeleteProductAvailabilityRange(productAvailabilityRange);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.ProductAvailabilityRanges.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.ProductAvailabilityRanges.Deleted"));
 
             return RedirectToAction("DatesAndRanges");
         }
@@ -630,7 +642,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult Warehouses(WarehouseSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _shippingModelFactory.PrepareWarehouseListModel(searchModel);
@@ -661,12 +673,9 @@ namespace Nop.Web.Areas.Admin.Controllers
                 address.CreatedOnUtc = DateTime.UtcNow;
                 _addressService.InsertAddress(address);
 
-                var warehouse = new Warehouse
-                {
-                    Name = model.Name,
-                    AdminComment = model.AdminComment,
-                    AddressId = address.Id
-                };
+                //fill entity from model
+                var warehouse = model.ToEntity<Warehouse>();
+                warehouse.AddressId = address.Id;
 
                 _shippingService.InsertWarehouse(warehouse);
 
@@ -674,7 +683,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("AddNewWarehouse",
                     string.Format(_localizationService.GetResource("ActivityLog.AddNewWarehouse"), warehouse.Id), warehouse);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Warehouses.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Warehouses.Added"));
 
                 return continueEditing ? RedirectToAction("EditWarehouse", new { id = warehouse.Id }) : RedirectToAction("Warehouses");
             }
@@ -726,8 +735,9 @@ namespace Nop.Web.Areas.Admin.Controllers
                 else
                     _addressService.InsertAddress(address);
 
-                warehouse.Name = model.Name;
-                warehouse.AdminComment = model.AdminComment;
+                //fill entity from model
+                warehouse = model.ToEntity(warehouse);
+
                 warehouse.AddressId = address.Id;
 
                 _shippingService.UpdateWarehouse(warehouse);
@@ -736,7 +746,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("EditWarehouse",
                     string.Format(_localizationService.GetResource("ActivityLog.EditWarehouse"), warehouse.Id), warehouse);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Warehouses.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Warehouses.Updated"));
 
                 return continueEditing ? RedirectToAction("EditWarehouse", warehouse.Id) : RedirectToAction("Warehouses");
             }
@@ -765,7 +775,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             _customerActivityService.InsertActivity("DeleteWarehouse",
                 string.Format(_localizationService.GetResource("ActivityLog.DeleteWarehouse"), warehouse.Id), warehouse);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.warehouses.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.warehouses.Deleted"));
 
             return RedirectToAction("Warehouses");
         }
@@ -790,7 +800,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         //we use 2048 value because in some cases default value (1024) is too small for this action
         [RequestFormLimits(ValueCountLimit = 2048)]
         [HttpPost, ActionName("Restrictions")]
-        public virtual IActionResult RestrictionSave(ShippingMethodRestrictionModel model)
+        public virtual IActionResult RestrictionSave(ShippingMethodRestrictionModel model, IFormCollection form)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
                 return AccessDeniedView();
@@ -801,8 +811,8 @@ namespace Nop.Web.Areas.Admin.Controllers
             foreach (var shippingMethod in shippingMethods)
             {
                 var formKey = "restrict_" + shippingMethod.Id;
-                var countryIdsToRestrict = !StringValues.IsNullOrEmpty(model.Form[formKey])
-                    ? model.Form[formKey].ToString().Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                var countryIdsToRestrict = !StringValues.IsNullOrEmpty(form[formKey])
+                    ? form[formKey].ToString().Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(int.Parse)
                     .ToList()
                     : new List<int>();
@@ -830,7 +840,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 }
             }
 
-            SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Restrictions.Updated"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Shipping.Restrictions.Updated"));
 
             return RedirectToAction("Restrictions");
         }

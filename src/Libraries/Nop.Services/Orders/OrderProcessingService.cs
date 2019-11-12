@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -58,6 +58,7 @@ namespace Nop.Services.Orders
         private readonly ILogger _logger;
         private readonly IOrderService _orderService;
         private readonly IOrderTotalCalculationService _orderTotalCalculationService;
+        private readonly IPaymentPluginManager _paymentPluginManager;
         private readonly IPaymentService _paymentService;
         private readonly IPdfService _pdfService;
         private readonly IPriceCalculationService _priceCalculationService;
@@ -67,9 +68,11 @@ namespace Nop.Services.Orders
         private readonly IProductService _productService;
         private readonly IRewardPointService _rewardPointService;
         private readonly IShipmentService _shipmentService;
+        private readonly IShippingPluginManager _shippingPluginManager;
         private readonly IShippingService _shippingService;
         private readonly IShoppingCartService _shoppingCartService;
         private readonly IStateProvinceService _stateProvinceService;
+        private readonly IStoreContext _storeContext;
         private readonly ITaxService _taxService;
         private readonly IVendorService _vendorService;
         private readonly IWebHelper _webHelper;
@@ -104,6 +107,7 @@ namespace Nop.Services.Orders
             ILogger logger,
             IOrderService orderService,
             IOrderTotalCalculationService orderTotalCalculationService,
+            IPaymentPluginManager paymentPluginManager,
             IPaymentService paymentService,
             IPdfService pdfService,
             IPriceCalculationService priceCalculationService,
@@ -113,9 +117,11 @@ namespace Nop.Services.Orders
             IProductService productService,
             IRewardPointService rewardPointService,
             IShipmentService shipmentService,
+            IShippingPluginManager shippingPluginManager,
             IShippingService shippingService,
             IShoppingCartService shoppingCartService,
             IStateProvinceService stateProvinceService,
+            IStoreContext storeContext,
             ITaxService taxService,
             IVendorService vendorService,
             IWebHelper webHelper,
@@ -128,47 +134,50 @@ namespace Nop.Services.Orders
             ShippingSettings shippingSettings,
             TaxSettings taxSettings)
         {
-            this._currencySettings = currencySettings;
-            this._affiliateService = affiliateService;
-            this._checkoutAttributeFormatter = checkoutAttributeFormatter;
-            this._countryService = countryService;
-            this._currencyService = currencyService;
-            this._customerActivityService = customerActivityService;
-            this._customerService = customerService;
-            this._customNumberFormatter = customNumberFormatter;
-            this._discountService = discountService;
-            this._encryptionService = encryptionService;
-            this._eventPublisher = eventPublisher;
-            this._genericAttributeService = genericAttributeService;
-            this._giftCardService = giftCardService;
-            this._languageService = languageService;
-            this._localizationService = localizationService;
-            this._logger = logger;
-            this._orderService = orderService;
-            this._orderTotalCalculationService = orderTotalCalculationService;
-            this._paymentService = paymentService;
-            this._pdfService = pdfService;
-            this._priceCalculationService = priceCalculationService;
-            this._priceFormatter = priceFormatter;
-            this._productAttributeFormatter = productAttributeFormatter;
-            this._productAttributeParser = productAttributeParser;
-            this._productService = productService;
-            this._rewardPointService = rewardPointService;
-            this._shipmentService = shipmentService;
-            this._shippingService = shippingService;
-            this._shoppingCartService = shoppingCartService;
-            this._stateProvinceService = stateProvinceService;
-            this._taxService = taxService;
-            this._vendorService = vendorService;
-            this._webHelper = webHelper;
-            this._workContext = workContext;
-            this._workflowMessageService = workflowMessageService;
-            this._localizationSettings = localizationSettings;
-            this._orderSettings = orderSettings;
-            this._paymentSettings = paymentSettings;
-            this._rewardPointsSettings = rewardPointsSettings;
-            this._shippingSettings = shippingSettings;
-            this._taxSettings = taxSettings;
+            _currencySettings = currencySettings;
+            _affiliateService = affiliateService;
+            _checkoutAttributeFormatter = checkoutAttributeFormatter;
+            _countryService = countryService;
+            _currencyService = currencyService;
+            _customerActivityService = customerActivityService;
+            _customerService = customerService;
+            _customNumberFormatter = customNumberFormatter;
+            _discountService = discountService;
+            _encryptionService = encryptionService;
+            _eventPublisher = eventPublisher;
+            _genericAttributeService = genericAttributeService;
+            _giftCardService = giftCardService;
+            _languageService = languageService;
+            _localizationService = localizationService;
+            _logger = logger;
+            _orderService = orderService;
+            _orderTotalCalculationService = orderTotalCalculationService;
+            _paymentPluginManager = paymentPluginManager;
+            _paymentService = paymentService;
+            _pdfService = pdfService;
+            _priceCalculationService = priceCalculationService;
+            _priceFormatter = priceFormatter;
+            _productAttributeFormatter = productAttributeFormatter;
+            _productAttributeParser = productAttributeParser;
+            _productService = productService;
+            _rewardPointService = rewardPointService;
+            _shipmentService = shipmentService;
+            _shippingPluginManager = shippingPluginManager;
+            _shippingService = shippingService;
+            _shoppingCartService = shoppingCartService;
+            _stateProvinceService = stateProvinceService;
+            _storeContext = storeContext;
+            _taxService = taxService;
+            _vendorService = vendorService;
+            _webHelper = webHelper;
+            _workContext = workContext;
+            _workflowMessageService = workflowMessageService;
+            _localizationSettings = localizationSettings;
+            _orderSettings = orderSettings;
+            _paymentSettings = paymentSettings;
+            _rewardPointsSettings = rewardPointsSettings;
+            _shippingSettings = shippingSettings;
+            _taxSettings = taxSettings;
         }
 
         #endregion
@@ -182,9 +191,9 @@ namespace Nop.Services.Orders
         {
             public PlaceOrderContainer()
             {
-                this.Cart = new List<ShoppingCartItem>();
-                this.AppliedDiscounts = new List<DiscountForCaching>();
-                this.AppliedGiftCards = new List<AppliedGiftCard>();
+                Cart = new List<ShoppingCartItem>();
+                AppliedDiscounts = new List<DiscountForCaching>();
+                AppliedGiftCards = new List<AppliedGiftCard>();
             }
 
             /// <summary>
@@ -245,7 +254,7 @@ namespace Nop.Services.Orders
             /// <summary>
             /// Is pickup in store selected?
             /// </summary>
-            public bool PickUpInStore { get; set; }
+            public bool PickupInStore { get; set; }
 
             /// <summary>
             /// Selected pickup address
@@ -438,8 +447,7 @@ namespace Nop.Services.Orders
             details.CheckoutAttributeDescription = _checkoutAttributeFormatter.FormatAttributes(details.CheckoutAttributesXml, details.Customer);
 
             //load shopping cart
-            details.Cart = details.Customer.ShoppingCartItems.Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart)
-                .LimitPerStore(processPaymentRequest.StoreId).ToList();
+            details.Cart = _shoppingCartService.GetShoppingCart(details.Customer, ShoppingCartType.ShoppingCart, processPaymentRequest.StoreId);
 
             if (!details.Cart.Any())
                 throw new NopException("Cart is empty");
@@ -501,12 +509,12 @@ namespace Nop.Services.Orders
             {
                 var pickupPoint = _genericAttributeService.GetAttribute<PickupPoint>(details.Customer,
                     NopCustomerDefaults.SelectedPickupPointAttribute, processPaymentRequest.StoreId);
-                if (_shippingSettings.AllowPickUpInStore && pickupPoint != null)
+                if (_shippingSettings.AllowPickupInStore && pickupPoint != null)
                 {
                     var country = _countryService.GetCountryByTwoLetterIsoCode(pickupPoint.CountryCode);
                     var state = _stateProvinceService.GetStateProvinceByAbbreviation(pickupPoint.StateAbbreviation, country?.Id);
 
-                    details.PickUpInStore = true;
+                    details.PickupInStore = true;
                     details.PickupAddress = new Address
                     {
                         Address1 = pickupPoint.Address,
@@ -545,9 +553,12 @@ namespace Nop.Services.Orders
             else
                 details.ShippingStatus = ShippingStatus.ShippingNotRequired;
 
+            //LoadAllShippingRateComputationMethods
+            var shippingRateComputationMethods = _shippingPluginManager.LoadActivePlugins(_workContext.CurrentCustomer, _storeContext.CurrentStore.Id);
+
             //shipping total
-            var orderShippingTotalInclTax = _orderTotalCalculationService.GetShoppingCartShippingTotal(details.Cart, true, out var _, out var shippingTotalDiscounts);
-            var orderShippingTotalExclTax = _orderTotalCalculationService.GetShoppingCartShippingTotal(details.Cart, false);
+            var orderShippingTotalInclTax = _orderTotalCalculationService.GetShoppingCartShippingTotal(details.Cart, true, shippingRateComputationMethods, out var _, out var shippingTotalDiscounts);
+            var orderShippingTotalExclTax = _orderTotalCalculationService.GetShoppingCartShippingTotal(details.Cart, false, shippingRateComputationMethods);
             if (!orderShippingTotalInclTax.HasValue || !orderShippingTotalExclTax.HasValue)
                 throw new NopException("Shipping total couldn't be calculated");
 
@@ -564,7 +575,7 @@ namespace Nop.Services.Orders
             details.PaymentAdditionalFeeExclTax = _taxService.GetPaymentMethodAdditionalFee(paymentAdditionalFee, false, details.Customer);
 
             //tax amount
-            details.OrderTaxTotal = _orderTotalCalculationService.GetTaxTotal(details.Cart, out var taxRatesDictionary);
+            details.OrderTaxTotal = _orderTotalCalculationService.GetTaxTotal(details.Cart, shippingRateComputationMethods, out var taxRatesDictionary);
 
             //VAT number
             var customerVatStatus = (VatNumberStatus)_genericAttributeService.GetAttribute<int>(details.Customer, NopCustomerDefaults.VatNumberStatusIdAttribute);
@@ -595,7 +606,7 @@ namespace Nop.Services.Orders
 
             //recurring or standard shopping cart?
             details.IsRecurringShoppingCart = _shoppingCartService.ShoppingCartIsRecurring(details.Cart);
-            if (!details.IsRecurringShoppingCart) 
+            if (!details.IsRecurringShoppingCart)
                 return details;
 
             var recurringCyclesError = _shoppingCartService.GetRecurringCycleInfo(details.Cart,
@@ -676,8 +687,8 @@ namespace Nop.Services.Orders
             //shipping info
             if (details.InitialOrder.ShippingStatus != ShippingStatus.ShippingNotRequired)
             {
-                details.PickUpInStore = details.InitialOrder.PickUpInStore;
-                if (!details.PickUpInStore)
+                details.PickupInStore = details.InitialOrder.PickupInStore;
+                if (!details.PickupInStore)
                 {
                     if (details.InitialOrder.ShippingAddress == null)
                         throw new NopException("Shipping address is not available");
@@ -788,7 +799,7 @@ namespace Nop.Services.Orders
                 ShippingAddress = details.ShippingAddress,
                 ShippingStatus = details.ShippingStatus,
                 ShippingMethod = details.ShippingMethodName,
-                PickUpInStore = details.PickUpInStore,
+                PickupInStore = details.PickupInStore,
                 PickupAddress = details.PickupAddress,
                 ShippingRateComputationMethodSystemName = details.ShippingRateComputationMethodSystemName,
                 CustomValuesXml = _paymentService.SerializeCustomValues(processPaymentRequest),
@@ -804,7 +815,7 @@ namespace Nop.Services.Orders
             _orderService.UpdateOrder(order);
 
             //reward points history
-            if (details.RedeemedRewardPointsAmount <= decimal.Zero) 
+            if (details.RedeemedRewardPointsAmount <= decimal.Zero)
                 return order;
 
             _rewardPointService.AddRewardPointsHistoryEntry(details.Customer, -details.RedeemedRewardPoints, order.StoreId,
@@ -1148,7 +1159,7 @@ namespace Nop.Services.Orders
                     if (add)
                     {
                         //add
-                        customer.CustomerCustomerRoleMappings.Add(new CustomerCustomerRoleMapping { CustomerRole = customerRole });
+                        customer.AddCustomerRoleMapping(new CustomerCustomerRoleMapping { CustomerRole = customerRole });
                     }
                 }
                 else
@@ -1157,8 +1168,8 @@ namespace Nop.Services.Orders
                     if (!add)
                     {
                         //remove
-                        customer.CustomerCustomerRoleMappings
-                            .Remove(customer.CustomerCustomerRoleMappings.FirstOrDefault(mapping => mapping.CustomerRoleId == customerRole.Id));
+                        customer.RemoveCustomerRoleMapping(
+                            customer.CustomerCustomerRoleMappings.FirstOrDefault(mapping => mapping.CustomerRoleId == customerRole.Id));
                     }
                 }
             }
@@ -1179,7 +1190,7 @@ namespace Nop.Services.Orders
                 var vendorId = orderItem.Product.VendorId;
                 //find existing
                 var vendor = vendors.FirstOrDefault(v => v.Id == vendorId);
-                if (vendor != null) 
+                if (vendor != null)
                     continue;
 
                 //not found. load by Id
@@ -1358,13 +1369,11 @@ namespace Nop.Services.Orders
             var skipPaymentWorkflow = details.OrderTotal == decimal.Zero;
             if (!skipPaymentWorkflow)
             {
-                var paymentMethod =
-                    _paymentService.LoadPaymentMethodBySystemName(processPaymentRequest.PaymentMethodSystemName);
-                if (paymentMethod == null)
-                    throw new NopException("Payment method couldn't be loaded");
+                var paymentMethod = _paymentPluginManager.LoadPluginBySystemName(processPaymentRequest.PaymentMethodSystemName)
+                    ?? throw new NopException("Payment method couldn't be loaded");
 
                 //ensure that payment method is active
-                if (!_paymentService.IsPaymentMethodActive(paymentMethod))
+                if (!_paymentPluginManager.IsPluginActive(paymentMethod))
                     throw new NopException("Payment method is not active");
 
                 if (details.IsRecurringShoppingCart)
@@ -1527,7 +1536,7 @@ namespace Nop.Services.Orders
             try
             {
                 if (processPaymentRequest.OrderGuid == Guid.Empty)
-                    processPaymentRequest.OrderGuid = Guid.NewGuid();
+                    throw new Exception("Order GUID is not generated");
 
                 //prepare order details
                 var details = PreparePlaceOrderDetails(processPaymentRequest);
@@ -1637,7 +1646,7 @@ namespace Nop.Services.Orders
 
             if (updateOrderParameters.PickupPoint != null)
             {
-                updatedOrder.PickUpInStore = true;
+                updatedOrder.PickupInStore = true;
                 updatedOrder.PickupAddress = new Address
                 {
                     Address1 = updateOrderParameters.PickupPoint.Address,
@@ -1668,7 +1677,7 @@ namespace Nop.Services.Orders
             var discountUsageHistoryForOrder = _discountService.GetAllDiscountUsageHistory(null, updatedOrder.Customer.Id, updatedOrder.Id);
             foreach (var discount in updateOrderParameters.AppliedDiscounts)
             {
-                if (discountUsageHistoryForOrder.Any(history => history.DiscountId == discount.Id)) 
+                if (discountUsageHistoryForOrder.Any(history => history.DiscountId == discount.Id))
                     continue;
 
                 var d = _discountService.GetDiscountById(discount.Id);
@@ -1796,11 +1805,10 @@ namespace Nop.Services.Orders
                 var skipPaymentWorkflow = details.OrderTotal == decimal.Zero;
                 if (!skipPaymentWorkflow)
                 {
-                    var paymentMethod = _paymentService.LoadPaymentMethodBySystemName(processPaymentRequest.PaymentMethodSystemName);
-                    if (paymentMethod == null)
-                        throw new NopException("Payment method couldn't be loaded");
+                    var paymentMethod = _paymentPluginManager.LoadPluginBySystemName(processPaymentRequest.PaymentMethodSystemName)
+                        ?? throw new NopException("Payment method couldn't be loaded");
 
-                    if (!_paymentService.IsPaymentMethodActive(paymentMethod))
+                    if (!_paymentPluginManager.IsPluginActive(paymentMethod))
                         throw new NopException("Payment method is not active");
 
                     //Old credit card info
@@ -2675,7 +2683,7 @@ namespace Nop.Services.Orders
                     //mark payment status as 'Refunded' if the order total amount is fully refunded
                     order.PaymentStatus = order.OrderTotal == totalAmountRefunded && result.NewPaymentStatus == PaymentStatus.PartiallyRefunded ? PaymentStatus.Refunded : result.NewPaymentStatus;
                     _orderService.UpdateOrder(order);
-                    
+
                     //add a note
                     AddOrderNote(order, $"Order has been partially refunded. Amount = {amountToRefund}");
 
@@ -2997,7 +3005,7 @@ namespace Nop.Services.Orders
                 throw new ArgumentNullException(nameof(cart));
 
             //min order amount sub-total validation
-            if (!cart.Any() || _orderSettings.MinOrderSubtotalAmount <= decimal.Zero) 
+            if (!cart.Any() || _orderSettings.MinOrderSubtotalAmount <= decimal.Zero)
                 return true;
 
             //subtotal
@@ -3019,7 +3027,7 @@ namespace Nop.Services.Orders
             if (cart == null)
                 throw new ArgumentNullException(nameof(cart));
 
-            if (!cart.Any() || _orderSettings.MinOrderTotalAmount <= decimal.Zero) 
+            if (!cart.Any() || _orderSettings.MinOrderTotalAmount <= decimal.Zero)
                 return true;
 
             var shoppingCartTotalBase = _orderTotalCalculationService.GetShoppingCartTotal(cart);

@@ -16,6 +16,7 @@ namespace Nop.Web.Controllers
         private readonly ICategoryService _categoryService;
         private readonly IManufacturerService _manufacturerService;
         private readonly INewsService _newsService;
+        private readonly IProductTagService _productTagService;
         private readonly IProductService _productService;
         private readonly ITopicService _topicService;
         private readonly IUrlRecordService _urlRecordService;
@@ -29,19 +30,21 @@ namespace Nop.Web.Controllers
             ICategoryService categoryService,
             IManufacturerService manufacturerService,
             INewsService newsService,
+            IProductTagService productTagService,
             IProductService productService,
             ITopicService topicService,
             IUrlRecordService urlRecordService,
             IVendorService vendorService)
         {
-            this._blogService = blogService;
-            this._categoryService = categoryService;
-            this._manufacturerService = manufacturerService;
-            this._newsService = newsService;
-            this._productService = productService;
-            this._topicService = topicService;
-            this._urlRecordService = urlRecordService;
-            this._vendorService = vendorService;
+            _blogService = blogService;
+            _categoryService = categoryService;
+            _manufacturerService = manufacturerService;
+            _newsService = newsService;
+            _productTagService = productTagService;
+            _productService = productService;
+            _topicService = topicService;
+            _urlRecordService = urlRecordService;
+            _vendorService = vendorService;
         }
 
         #endregion
@@ -53,7 +56,7 @@ namespace Nop.Web.Controllers
         {
             var product = _productService.GetProductById(productId);
             if (product == null)
-                return RedirectToRoutePermanent("HomePage");
+                return RedirectToRoutePermanent("Homepage");
 
             return RedirectToRoutePermanent("Product", new { SeName = _urlRecordService.GetSeName(product) });
         }
@@ -63,7 +66,7 @@ namespace Nop.Web.Controllers
         {
             var category = _categoryService.GetCategoryById(categoryId);
             if (category == null)
-                return RedirectToRoutePermanent("HomePage");
+                return RedirectToRoutePermanent("Homepage");
 
             return RedirectToRoutePermanent("Category", new { SeName = _urlRecordService.GetSeName(category) });
         }
@@ -73,7 +76,7 @@ namespace Nop.Web.Controllers
         {
             var manufacturer = _manufacturerService.GetManufacturerById(manufacturerId);
             if (manufacturer == null)
-                return RedirectToRoutePermanent("HomePage");
+                return RedirectToRoutePermanent("Homepage");
 
             return RedirectToRoutePermanent("Manufacturer", new { SeName = _urlRecordService.GetSeName(manufacturer) });
         }
@@ -83,7 +86,7 @@ namespace Nop.Web.Controllers
         {
             var newsItem = _newsService.GetNewsById(newsItemId);
             if (newsItem == null)
-                return RedirectToRoutePermanent("HomePage");
+                return RedirectToRoutePermanent("Homepage");
 
             return RedirectToRoutePermanent("NewsItem", new { SeName = _urlRecordService.GetSeName(newsItem, newsItem.LanguageId, ensureTwoPublishedLanguages: false) });
         }
@@ -93,7 +96,7 @@ namespace Nop.Web.Controllers
         {
             var blogPost = _blogService.GetBlogPostById(blogPostId);
             if (blogPost == null)
-                return RedirectToRoutePermanent("HomePage");
+                return RedirectToRoutePermanent("Homepage");
 
             return RedirectToRoutePermanent("BlogPost", new { SeName = _urlRecordService.GetSeName(blogPost, blogPost.LanguageId, ensureTwoPublishedLanguages: false) });
         }
@@ -103,7 +106,7 @@ namespace Nop.Web.Controllers
         {
             var topic = _topicService.GetTopicBySystemName(systemName);
             if (topic == null)
-                return RedirectToRoutePermanent("HomePage");
+                return RedirectToRoutePermanent("Homepage");
 
             return RedirectToRoutePermanent("Topic", new { SeName = _urlRecordService.GetSeName(topic) });
         }
@@ -113,9 +116,19 @@ namespace Nop.Web.Controllers
         {
             var vendor = _vendorService.GetVendorById(vendorId);
             if (vendor == null)
-                return RedirectToRoutePermanent("HomePage");
+                return RedirectToRoutePermanent("Homepage");
 
             return RedirectToRoutePermanent("Vendor", new { SeName = _urlRecordService.GetSeName(vendor) });
+        }
+
+        //in versions 3.00-4.00 we had ID in product tag URLs
+        public virtual IActionResult RedirectProductTagById(int productTagId)
+        {
+            var productTag = _productTagService.GetProductTagById(productTagId);
+            if (productTag == null)
+                return RedirectToRoutePermanent("Homepage");
+
+            return RedirectToRoutePermanent("ProductsByTag", new { SeName = _urlRecordService.GetSeName(productTag) });
         }
 
         #endregion

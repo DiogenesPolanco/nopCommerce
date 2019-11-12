@@ -12,6 +12,7 @@ using Nop.Services.Discounts;
 using Nop.Services.ExportImport;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Media;
 using Nop.Services.Security;
 using Nop.Services.Seo;
@@ -39,6 +40,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly IImportManager _importManager;
         private readonly ILocalizationService _localizationService;
         private readonly ILocalizedEntityService _localizedEntityService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly IPictureService _pictureService;
         private readonly IProductService _productService;
@@ -61,6 +63,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             IImportManager importManager,
             ILocalizationService localizationService,
             ILocalizedEntityService localizedEntityService,
+            INotificationService notificationService,
             IPermissionService permissionService,
             IPictureService pictureService,
             IProductService productService,
@@ -69,23 +72,24 @@ namespace Nop.Web.Areas.Admin.Controllers
             IUrlRecordService urlRecordService,
             IWorkContext workContext)
         {
-            this._aclService = aclService;
-            this._categoryModelFactory = categoryModelFactory;
-            this._categoryService = categoryService;
-            this._customerActivityService = customerActivityService;
-            this._customerService = customerService;
-            this._discountService = discountService;
-            this._exportManager = exportManager;
-            this._importManager = importManager;
-            this._localizationService = localizationService;
-            this._localizedEntityService = localizedEntityService;
-            this._permissionService = permissionService;
-            this._pictureService = pictureService;
-            this._productService = productService;
-            this._storeMappingService = storeMappingService;
-            this._storeService = storeService;
-            this._urlRecordService = urlRecordService;
-            this._workContext = workContext;
+            _aclService = aclService;
+            _categoryModelFactory = categoryModelFactory;
+            _categoryService = categoryService;
+            _customerActivityService = customerActivityService;
+            _customerService = customerService;
+            _discountService = discountService;
+            _exportManager = exportManager;
+            _importManager = importManager;
+            _localizationService = localizationService;
+            _localizedEntityService = localizedEntityService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _pictureService = pictureService;
+            _productService = productService;
+            _storeMappingService = storeMappingService;
+            _storeService = storeService;
+            _urlRecordService = urlRecordService;
+            _workContext = workContext;
         }
 
         #endregion
@@ -206,7 +210,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult List(CategorySearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCategories))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _categoryModelFactory.PrepareCategoryListModel(searchModel);
@@ -273,14 +277,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("AddNewCategory",
                     string.Format(_localizationService.GetResource("ActivityLog.AddNewCategory"), category.Name), category);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Catalog.Categories.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Catalog.Categories.Added"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
-
+                
                 return RedirectToAction("Edit", new { id = category.Id });
             }
 
@@ -375,14 +376,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("EditCategory",
                     string.Format(_localizationService.GetResource("ActivityLog.EditCategory"), category.Name), category);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Catalog.Categories.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Catalog.Categories.Updated"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
-
+                
                 return RedirectToAction("Edit", new { id = category.Id });
             }
 
@@ -410,7 +408,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             _customerActivityService.InsertActivity("DeleteCategory",
                 string.Format(_localizationService.GetResource("ActivityLog.DeleteCategory"), category.Name), category);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Catalog.Categories.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Catalog.Categories.Deleted"));
 
             return RedirectToAction("List");
         }
@@ -432,7 +430,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("List");
             }
         }
@@ -451,7 +449,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("List");
             }
         }
@@ -474,17 +472,17 @@ namespace Nop.Web.Areas.Admin.Controllers
                 }
                 else
                 {
-                    ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
+                    _notificationService.ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
                     return RedirectToAction("List");
                 }
 
-                SuccessNotification(_localizationService.GetResource("Admin.Catalog.Categories.Imported"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Catalog.Categories.Imported"));
 
                 return RedirectToAction("List");
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("List");
             }
         }
@@ -497,7 +495,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ProductList(CategoryProductSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCategories))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a category with the specified id
             var category = _categoryService.GetCategoryById(searchModel.CategoryId)
@@ -518,8 +516,8 @@ namespace Nop.Web.Areas.Admin.Controllers
             var productCategory = _categoryService.GetProductCategoryById(model.Id)
                 ?? throw new ArgumentException("No product category mapping found with the specified id");
 
-            productCategory.IsFeaturedProduct = model.IsFeaturedProduct;
-            productCategory.DisplayOrder = model.DisplayOrder;
+            //fill entity from product
+            productCategory = model.ToEntity(productCategory);
             _categoryService.UpdateProductCategory(productCategory);
 
             return new NullJsonResult();
@@ -554,7 +552,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ProductAddPopupList(AddProductToCategorySearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCategories))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _categoryModelFactory.PrepareAddProductToCategoryListModel(searchModel);

@@ -12,6 +12,7 @@ using Nop.Services.Orders;
 using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
 using Nop.Web.Areas.Admin.Models.Affiliates;
 using Nop.Web.Areas.Admin.Models.Common;
+using Nop.Web.Framework.Models.Extensions;
 
 namespace Nop.Web.Areas.Admin.Factories
 {
@@ -42,13 +43,13 @@ namespace Nop.Web.Areas.Admin.Factories
             IOrderService orderService,
             IPriceFormatter priceFormatter)
         {
-            this._affiliateService = affiliateService;
-            this._baseAdminModelFactory = baseAdminModelFactory;
-            this._customerService = customerService;
-            this._dateTimeHelper = dateTimeHelper;
-            this._localizationService = localizationService;
-            this._orderService = orderService;
-            this._priceFormatter = priceFormatter;
+            _affiliateService = affiliateService;
+            _baseAdminModelFactory = baseAdminModelFactory;
+            _customerService = customerService;
+            _dateTimeHelper = dateTimeHelper;
+            _localizationService = localizationService;
+            _orderService = orderService;
+            _priceFormatter = priceFormatter;
         }
 
         #endregion
@@ -185,18 +186,19 @@ namespace Nop.Web.Areas.Admin.Factories
                 searchModel.Page - 1, searchModel.PageSize, true);
 
             //prepare list model
-            var model = new AffiliateListModel
+            var model = new AffiliateListModel().PrepareToGrid(searchModel, affiliates, () =>
             {
                 //fill in model values from the entity
-                Data = affiliates.Select(affiliate =>
+                return affiliates.Select(affiliate =>
                 {
                     var affiliateModel = affiliate.ToModel<AffiliateModel>();
                     affiliateModel.Address = affiliate.Address.ToModel<AddressModel>();
+                    affiliateModel.Address.CountryName = affiliate.Address.Country?.Name;
+                    affiliateModel.Address.StateProvinceName = affiliate.Address.StateProvince?.Name;
 
                     return affiliateModel;
-                }),
-                Total = affiliates.TotalCount
-            };
+                });
+            });
 
             return model;
         }
@@ -269,22 +271,23 @@ namespace Nop.Web.Areas.Admin.Factories
                 pageIndex: searchModel.Page - 1, pageSize: searchModel.PageSize);
 
             //prepare list model
-            var model = new AffiliatedOrderListModel
+            var model = new AffiliatedOrderListModel().PrepareToGrid(searchModel, orders, () =>
             {
                 //fill in model values from the entity
-                Data = orders.Select(order => new AffiliatedOrderModel
+                return orders.Select(order =>
                 {
-                    Id = order.Id,
-                    OrderStatus = _localizationService.GetLocalizedEnum(order.OrderStatus),
-                    OrderStatusId = order.OrderStatusId,
-                    PaymentStatus = _localizationService.GetLocalizedEnum(order.PaymentStatus),
-                    ShippingStatus = _localizationService.GetLocalizedEnum(order.ShippingStatus),
-                    OrderTotal = _priceFormatter.FormatPrice(order.OrderTotal, true, false),
-                    CreatedOn = _dateTimeHelper.ConvertToUserTime(order.CreatedOnUtc, DateTimeKind.Utc),
-                    CustomOrderNumber = order.CustomOrderNumber
-                }),
-                Total = orders.TotalCount
-            };
+                    var affiliatedOrderModel = order.ToModel<AffiliatedOrderModel>();
+
+                    //fill in additional values (not existing in the entity)
+                    affiliatedOrderModel.OrderStatus = _localizationService.GetLocalizedEnum(order.OrderStatus);
+                    affiliatedOrderModel.PaymentStatus = _localizationService.GetLocalizedEnum(order.PaymentStatus);
+                    affiliatedOrderModel.ShippingStatus = _localizationService.GetLocalizedEnum(order.ShippingStatus);
+                    affiliatedOrderModel.OrderTotal = _priceFormatter.FormatPrice(order.OrderTotal, true, false);
+                    affiliatedOrderModel.CreatedOn = _dateTimeHelper.ConvertToUserTime(order.CreatedOnUtc, DateTimeKind.Utc);
+
+                    return affiliatedOrderModel;
+                });
+            });
 
             return model;
         }
@@ -309,16 +312,17 @@ namespace Nop.Web.Areas.Admin.Factories
                 pageIndex: searchModel.Page - 1, pageSize: searchModel.PageSize);
 
             //prepare list model
-            var model = new AffiliatedCustomerListModel
+            var model = new AffiliatedCustomerListModel().PrepareToGrid(searchModel, customers, () =>
             {
                 //fill in model values from the entity
-                Data = customers.Select(customer => new AffiliatedCustomerModel
+                return customers.Select(customer =>
                 {
-                    Id = customer.Id,
-                    Name = customer.Email
-                }),
-                Total = customers.TotalCount
-            };
+                    var affiliatedCustomerModel = customer.ToModel<AffiliatedCustomerModel>();
+                    affiliatedCustomerModel.Name = customer.Email;
+
+                    return affiliatedCustomerModel;
+                });
+            });
 
             return model;
         }

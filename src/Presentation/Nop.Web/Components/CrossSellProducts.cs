@@ -16,6 +16,7 @@ namespace Nop.Web.Components
         private readonly IAclService _aclService;
         private readonly IProductModelFactory _productModelFactory;
         private readonly IProductService _productService;
+        private readonly IShoppingCartService _shoppingCartService;
         private readonly IStoreContext _storeContext;
         private readonly IStoreMappingService _storeMappingService;
         private readonly IWorkContext _workContext;
@@ -24,26 +25,25 @@ namespace Nop.Web.Components
         public CrossSellProductsViewComponent(IAclService aclService,
             IProductModelFactory productModelFactory,
             IProductService productService,
+            IShoppingCartService shoppingCartService,
             IStoreContext storeContext,
             IStoreMappingService storeMappingService,
             IWorkContext workContext,
             ShoppingCartSettings shoppingCartSettings)
         {
-            this._aclService = aclService;
-            this._productModelFactory = productModelFactory;
-            this._productService = productService;
-            this._storeContext = storeContext;
-            this._storeMappingService = storeMappingService;
-            this._workContext = workContext;
-            this._shoppingCartSettings = shoppingCartSettings;
+            _aclService = aclService;
+            _productModelFactory = productModelFactory;
+            _productService = productService;
+            _shoppingCartService = shoppingCartService;
+            _storeContext = storeContext;
+            _storeMappingService = storeMappingService;
+            _workContext = workContext;
+            _shoppingCartSettings = shoppingCartSettings;
         }
 
         public IViewComponentResult Invoke(int? productThumbPictureSize)
         {
-            var cart = _workContext.CurrentCustomer.ShoppingCartItems
-                .Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart)
-                .LimitPerStore(_storeContext.CurrentStore.Id)
-                .ToList();
+            var cart = _shoppingCartService.GetShoppingCart(_workContext.CurrentCustomer, ShoppingCartType.ShoppingCart, _storeContext.CurrentStore.Id);
 
             var products = _productService.GetCrosssellProductsByShoppingCart(cart, _shoppingCartSettings.CrossSellsNumber);
             //ACL and store mapping

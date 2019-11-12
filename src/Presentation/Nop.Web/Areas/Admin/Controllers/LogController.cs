@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Areas.Admin.Models.Logging;
@@ -18,6 +19,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ILocalizationService _localizationService;
         private readonly ILogger _logger;
         private readonly ILogModelFactory _logModelFactory;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
 
         #endregion
@@ -28,13 +30,15 @@ namespace Nop.Web.Areas.Admin.Controllers
             ILocalizationService localizationService,
             ILogger logger,
             ILogModelFactory logModelFactory,
+            INotificationService notificationService,
             IPermissionService permissionService)
         {
-            this._customerActivityService = customerActivityService;
-            this._localizationService = localizationService;
-            this._logger = logger;
-            this._logModelFactory = logModelFactory;
-            this._permissionService = permissionService;
+            _customerActivityService = customerActivityService;
+            _localizationService = localizationService;
+            _logger = logger;
+            _logModelFactory = logModelFactory;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
         }
 
         #endregion
@@ -61,7 +65,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult LogList(LogSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSystemLog))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _logModelFactory.PrepareLogListModel(searchModel);
@@ -81,7 +85,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             //activity log
             _customerActivityService.InsertActivity("DeleteSystemLog", _localizationService.GetResource("ActivityLog.DeleteSystemLog"));
 
-            SuccessNotification(_localizationService.GetResource("Admin.System.Log.Cleared"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.System.Log.Cleared"));
 
             return RedirectToAction("List");
         }
@@ -118,7 +122,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             //activity log
             _customerActivityService.InsertActivity("DeleteSystemLog", _localizationService.GetResource("ActivityLog.DeleteSystemLog"), log);
 
-            SuccessNotification(_localizationService.GetResource("Admin.System.Log.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.System.Log.Deleted"));
 
             return RedirectToAction("List");
         }

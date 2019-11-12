@@ -5,6 +5,7 @@ using Nop.Core.Domain.Stores;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Services.Stores;
 using Nop.Web.Areas.Admin.Factories;
@@ -22,6 +23,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ICustomerActivityService _customerActivityService;
         private readonly ILocalizationService _localizationService;
         private readonly ILocalizedEntityService _localizedEntityService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly ISettingService _settingService;
         private readonly IStoreModelFactory _storeModelFactory;
@@ -34,18 +36,20 @@ namespace Nop.Web.Areas.Admin.Controllers
         public StoreController(ICustomerActivityService customerActivityService,
             ILocalizationService localizationService,
             ILocalizedEntityService localizedEntityService,
+            INotificationService notificationService,
             IPermissionService permissionService,
             ISettingService settingService,
             IStoreModelFactory storeModelFactory,
             IStoreService storeService)
         {
-            this._customerActivityService = customerActivityService;
-            this._localizationService = localizationService;
-            this._localizedEntityService = localizedEntityService;
-            this._permissionService = permissionService;
-            this._settingService = settingService;
-            this._storeModelFactory = storeModelFactory;
-            this._storeService = storeService;
+            _customerActivityService = customerActivityService;
+            _localizationService = localizationService;
+            _localizedEntityService = localizedEntityService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _settingService = settingService;
+            _storeModelFactory = storeModelFactory;
+            _storeService = storeService;
         }
 
         #endregion
@@ -82,7 +86,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult List(StoreSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageStores))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _storeModelFactory.PrepareStoreListModel(searchModel);
@@ -124,7 +128,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateAttributeLocales(store, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Stores.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Stores.Added"));
 
                 return continueEditing ? RedirectToAction("Edit", new { id = store.Id }) : RedirectToAction("List");
             }
@@ -181,7 +185,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //locales
                 UpdateAttributeLocales(store, model);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Stores.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Stores.Updated"));
 
                 return continueEditing ? RedirectToAction("Edit", new { id = store.Id }) : RedirectToAction("List");
             }
@@ -230,13 +234,13 @@ namespace Nop.Web.Areas.Admin.Controllers
                     _settingService.DeleteSettings(settingsToDelete);
                 }
 
-                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Stores.Deleted"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Stores.Deleted"));
 
                 return RedirectToAction("List");
             }
             catch (Exception exc)
             {
-                ErrorNotification(exc);
+                _notificationService.ErrorNotification(exc);
                 return RedirectToAction("Edit", new { id = store.Id });
             }
         }

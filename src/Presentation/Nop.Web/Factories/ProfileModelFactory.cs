@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Nop.Core;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Forums;
 using Nop.Core.Domain.Media;
@@ -32,6 +33,7 @@ namespace Nop.Web.Factories
         private readonly IGenericAttributeService _genericAttributeService;
         private readonly ILocalizationService _localizationService;
         private readonly IPictureService _pictureService;
+        private readonly IWorkContext _workContext;
         private readonly MediaSettings _mediaSettings;
 
         #endregion
@@ -47,18 +49,20 @@ namespace Nop.Web.Factories
             IGenericAttributeService genericAttributeService,
             ILocalizationService localizationService,
             IPictureService pictureService,
+            IWorkContext workContext,
             MediaSettings mediaSettings)
         {
-            this._customerSettings = customerSettings;
-            this._forumSettings = forumSettings;
-            this._countryService = countryService;
-            this._customerService = customerService;
-            this._dateTimeHelper = dateTimeHelper;
-            this._forumService = forumService;
-            this._genericAttributeService = genericAttributeService;
-            this._localizationService = localizationService;
-            this._pictureService = pictureService;
-            this._mediaSettings = mediaSettings;
+            _customerSettings = customerSettings;
+            _forumSettings = forumSettings;
+            _countryService = countryService;
+            _customerService = customerService;
+            _dateTimeHelper = dateTimeHelper;
+            _forumService = forumService;
+            _genericAttributeService = genericAttributeService;
+            _localizationService = localizationService;
+            _pictureService = pictureService;
+            _workContext = workContext;
+            _mediaSettings = mediaSettings;
         }
 
         #endregion
@@ -85,7 +89,7 @@ namespace Nop.Web.Factories
                 pagingPosts = true;
             }
 
-            var name = _customerService.FormatUserName(customer);
+            var name = _customerService.FormatUsername(customer);
             var title = string.Format(_localizationService.GetResource("Profile.ProfileOf"), name);
 
             var model = new ProfileIndexModel
@@ -219,7 +223,9 @@ namespace Nop.Web.Factories
                 var posted = string.Empty;
                 if (_forumSettings.RelativeDateTimeFormattingEnabled)
                 {
-                    posted = forumPost.CreatedOnUtc.RelativeFormat(true, "f");
+                    var languageCode = _workContext.WorkingLanguage.LanguageCulture;
+                    var postedAgo = forumPost.CreatedOnUtc.RelativeFormat(languageCode);
+                    posted = string.Format(_localizationService.GetResource("Common.RelativeDateTime.Past"), postedAgo);
                 }
                 else
                 {

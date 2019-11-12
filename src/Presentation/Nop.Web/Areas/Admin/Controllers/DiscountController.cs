@@ -10,6 +10,7 @@ using Nop.Services.Catalog;
 using Nop.Services.Discounts;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
@@ -28,12 +29,13 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly ICategoryService _categoryService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly IDiscountModelFactory _discountModelFactory;
+        private readonly IDiscountPluginManager _discountPluginManager;
         private readonly IDiscountService _discountService;
         private readonly ILocalizationService _localizationService;
         private readonly IManufacturerService _manufacturerService;
+        private readonly INotificationService _notificationService;
         private readonly IPermissionService _permissionService;
         private readonly IProductService _productService;
-        private readonly IWebHelper _webHelper;
 
         #endregion
 
@@ -43,23 +45,25 @@ namespace Nop.Web.Areas.Admin.Controllers
             ICategoryService categoryService,
             ICustomerActivityService customerActivityService,
             IDiscountModelFactory discountModelFactory,
+            IDiscountPluginManager discountPluginManager,
             IDiscountService discountService,
             ILocalizationService localizationService,
             IManufacturerService manufacturerService,
+            INotificationService notificationService,
             IPermissionService permissionService,
-            IProductService productService,
-            IWebHelper webHelper)
+            IProductService productService)
         {
-            this._catalogSettings = catalogSettings;
-            this._categoryService = categoryService;
-            this._customerActivityService = customerActivityService;
-            this._discountModelFactory = discountModelFactory;
-            this._discountService = discountService;
-            this._localizationService = localizationService;
-            this._manufacturerService = manufacturerService;
-            this._permissionService = permissionService;
-            this._productService = productService;
-            this._webHelper = webHelper;
+            _catalogSettings = catalogSettings;
+            _categoryService = categoryService;
+            _customerActivityService = customerActivityService;
+            _discountModelFactory = discountModelFactory;
+            _discountPluginManager = discountPluginManager;
+            _discountService = discountService;
+            _localizationService = localizationService;
+            _manufacturerService = manufacturerService;
+            _notificationService = notificationService;
+            _permissionService = permissionService;
+            _productService = productService;
         }
 
         #endregion
@@ -96,7 +100,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             //whether discounts are ignored
             if (_catalogSettings.IgnoreDiscounts)
-                WarningNotification(_localizationService.GetResource("Admin.Promotions.Discounts.IgnoreDiscounts.Warning"));
+                _notificationService.WarningNotification(_localizationService.GetResource("Admin.Promotions.Discounts.IgnoreDiscounts.Warning"));
 
             //prepare model
             var model = _discountModelFactory.PrepareDiscountSearchModel(new DiscountSearchModel());
@@ -108,7 +112,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult List(DiscountSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _discountModelFactory.PrepareDiscountListModel(searchModel);
@@ -142,14 +146,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("AddNewDiscount",
                     string.Format(_localizationService.GetResource("ActivityLog.AddNewDiscount"), discount.Name), discount);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Promotions.Discounts.Added"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Promotions.Discounts.Added"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
-
+                
                 return RedirectToAction("Edit", new { id = discount.Id });
             }
 
@@ -225,14 +226,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _customerActivityService.InsertActivity("EditDiscount",
                     string.Format(_localizationService.GetResource("ActivityLog.EditDiscount"), discount.Name), discount);
 
-                SuccessNotification(_localizationService.GetResource("Admin.Promotions.Discounts.Updated"));
+                _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Promotions.Discounts.Updated"));
 
                 if (!continueEditing)
                     return RedirectToAction("List");
-
-                //selected tab
-                SaveSelectedTabName();
-
+                
                 return RedirectToAction("Edit", new { id = discount.Id });
             }
 
@@ -267,7 +265,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             _customerActivityService.InsertActivity("DeleteDiscount",
                 string.Format(_localizationService.GetResource("ActivityLog.DeleteDiscount"), discount.Name), discount);
 
-            SuccessNotification(_localizationService.GetResource("Admin.Promotions.Discounts.Deleted"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Promotions.Discounts.Deleted"));
 
             return RedirectToAction("List");
         }
@@ -284,15 +282,13 @@ namespace Nop.Web.Areas.Admin.Controllers
             if (string.IsNullOrEmpty(systemName))
                 throw new ArgumentNullException(nameof(systemName));
 
-            var discountRequirementRule = _discountService.LoadDiscountRequirementRuleBySystemName(systemName);
-            if (discountRequirementRule == null)
-                throw new ArgumentException("Discount requirement rule could not be loaded");
+            var discountRequirementRule = _discountPluginManager.LoadPluginBySystemName(systemName)
+                ?? throw new ArgumentException("Discount requirement rule could not be loaded");
 
-            var discount = _discountService.GetDiscountById(discountId);
-            if (discount == null)
-                throw new ArgumentException("Discount could not be loaded");
+            var discount = _discountService.GetDiscountById(discountId)
+                ?? throw new ArgumentException("Discount could not be loaded");
 
-            var url = $"{_webHelper.GetStoreLocation()}{discountRequirementRule.GetConfigurationUrl(discount.Id, discountRequirementId)}";
+            var url = discountRequirementRule.GetConfigurationUrl(discount.Id, discountRequirementId);
 
             return Json(new { url });
         }
@@ -431,7 +427,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ProductList(DiscountProductSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a discount with the specified id
             var discount = _discountService.GetDiscountById(searchModel.DiscountId)
@@ -481,7 +477,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ProductAddPopupList(AddProductToDiscountSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _discountModelFactory.PrepareAddProductToDiscountListModel(searchModel);
@@ -526,7 +522,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult CategoryList(DiscountCategorySearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a discount with the specified id
             var discount = _discountService.GetDiscountById(searchModel.DiscountId)
@@ -575,7 +571,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult CategoryAddPopupList(AddCategoryToDiscountSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _discountModelFactory.PrepareAddCategoryToDiscountListModel(searchModel);
@@ -619,7 +615,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ManufacturerList(DiscountManufacturerSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a discount with the specified id
             var discount = _discountService.GetDiscountById(searchModel.DiscountId)
@@ -668,7 +664,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult ManufacturerAddPopupList(AddManufacturerToDiscountSearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //prepare model
             var model = _discountModelFactory.PrepareAddManufacturerToDiscountListModel(searchModel);
@@ -712,7 +708,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         public virtual IActionResult UsageHistoryList(DiscountUsageHistorySearchModel searchModel)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
-                return AccessDeniedKendoGridJson();
+                return AccessDeniedDataTablesJson();
 
             //try to get a discount with the specified id
             var discount = _discountService.GetDiscountById(searchModel.DiscountId)
@@ -733,7 +729,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             //try to get a discount with the specified id
             var unused = _discountService.GetDiscountById(discountId)
                 ?? throw new ArgumentException("No discount found with the specified id", nameof(discountId));
-                
+
             //try to get a discount usage history entry with the specified id
             var discountUsageHistoryEntry = _discountService.GetDiscountUsageHistoryById(id)
                 ?? throw new ArgumentException("No discount usage history entry found with the specified id", nameof(id));
